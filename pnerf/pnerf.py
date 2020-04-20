@@ -41,8 +41,8 @@ def dihedral_to_point(dihedral, use_gpu, bond_lengths=BOND_LENGTHS,
         r_sin_theta = r_sin_theta.cuda()
 
     point_x = r_cos_theta.view(1, 1, -1).repeat(num_steps, batch_size, 1)
-    point_y = torch.cos(dihedral) * r_sin_theta
-    point_z = torch.sin(dihedral) * r_sin_theta
+    point_y = torch.cos(dihedral).cuda() * r_sin_theta
+    point_z = torch.sin(dihedral).cuda() * r_sin_theta
 
     point = torch.stack([point_x, point_y, point_z])
     point_perm = point.permute(1, 3, 2, 0)
