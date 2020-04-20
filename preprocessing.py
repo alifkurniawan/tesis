@@ -97,7 +97,7 @@ def process_file(input_file, output_file, use_gpu):
                                 maxshape=(None, MAX_SEQUENCE_LENGTH, 9), dtype='float')
     dset3 = file.create_dataset('mask', (current_buffer_size, MAX_SEQUENCE_LENGTH),
                                 maxshape=(None, MAX_SEQUENCE_LENGTH),
-                                dtype='uint8')
+                                dtype='bool')
 
     input_file_pointer = open("data/raw/" + input_file, "r")
 
@@ -132,7 +132,7 @@ def process_file(input_file, output_file, use_gpu):
         tertiary_padded[:, :sequence_length] = t_reshaped
         mask_padded[:sequence_length] = next_protein['mask']
 
-        mask = torch.Tensor(mask_padded).type(dtype=torch.uint8)
+        mask = torch.Tensor(mask_padded).type(dtype=torch.bool)
 
         prim = torch.masked_select(torch.Tensor(primary_padded)
                                    .type(dtype=torch.long), mask)
