@@ -97,7 +97,7 @@ def process_file(input_file, output_file, use_gpu):
                                 maxshape=(None, MAX_SEQUENCE_LENGTH, 9), dtype='float')
     dset3 = file.create_dataset('mask', (current_buffer_size, MAX_SEQUENCE_LENGTH),
                                 maxshape=(None, MAX_SEQUENCE_LENGTH),
-                                dtype='bool')
+                                dtype='uint8')
 
     input_file_pointer = open("data/raw/" + input_file, "r")
 
