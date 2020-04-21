@@ -14,11 +14,11 @@ from util import contruct_dataloader_from_disk
 def run_experiment(parser, use_gpu):
     # parse experiment specific command line arguments
     parser.add_argument('--learning-rate', dest='learning_rate', type=float,
-                        default=0.01, help='Learning rate to use during training.')
+                        default=0.001, help='Learning rate to use during training.')
     args, _unknown = parser.parse_known_args()
 
     # pre-process data
-    process_raw_data(use_gpu, force_pre_processing_overwrite=False)
+    process_raw_data(use_gpu, force_pre_processing_overwrite=True)
 
     # run experiment
     training_file = "data/preprocessed/training_30.hdf5"

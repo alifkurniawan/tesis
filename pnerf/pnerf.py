@@ -40,9 +40,13 @@ def dihedral_to_point(dihedral, use_gpu, bond_lengths=BOND_LENGTHS,
         r_cos_theta = r_cos_theta.cuda()
         r_sin_theta = r_sin_theta.cuda()
 
-    point_x = r_cos_theta.view(1, 1, -1).repeat(num_steps, batch_size, 1)
-    point_y = torch.cos(dihedral).cuda() * r_sin_theta
-    point_z = torch.sin(dihedral).cuda() * r_sin_theta
+        point_x = r_cos_theta.view(1, 1, -1).repeat(num_steps, batch_size, 1)
+        point_y = torch.cos(dihedral).cuda() * r_sin_theta
+        point_z = torch.sin(dihedral).cuda() * r_sin_theta
+    else:
+        point_x = r_cos_theta.view(1, 1, -1).repeat(num_steps, batch_size, 1)
+        point_y = torch.cos(dihedral) * r_sin_theta
+        point_z = torch.sin(dihedral) * r_sin_theta
 
     point = torch.stack([point_x, point_y, point_z])
     point_perm = point.permute(1, 3, 2, 0)
@@ -159,5 +163,4 @@ def point_to_coordinate(points, use_gpu, num_fragments=6):
         coords_trans = torch.cat([coords_pretrans[idx], transformed_coords], 0)
 
     coords = F.pad(coords_trans[:total_num_angles - 1], (0, 0, 0, 0, 1, 0))
-
     return coords

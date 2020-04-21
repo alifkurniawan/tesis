@@ -19,6 +19,7 @@ AA_ID_DICT = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K
               'L': 10, 'M': 11, 'N': 12, 'P': 13, 'Q': 14, 'R': 15, 'S': 16, 'T': 17,
               'V': 18, 'W': 19, 'Y': 20}
 
+mu = 0.00001
 
 def contruct_dataloader_from_disk(filename, minibatch_size):
     return torch.utils.data.DataLoader(H5PytorchDataset(filename),
@@ -170,20 +171,20 @@ def calculate_dihedral_angles(atomic_coords, use_gpu):
 def compute_dihedral_list(atomic_coords):
     # atomic_coords is -1 x 3
     ba = atomic_coords[1:] - atomic_coords[:-1]
-    ba /= ba.norm(dim=1).unsqueeze(1)
+    ba /= (ba.norm(dim=1).unsqueeze(1) + mu) # prevent zero divider
     ba_neg = -1 * ba
 
     n1_vec = torch.cross(ba[:-2], ba_neg[1:-1], dim=1)
     n2_vec = torch.cross(ba_neg[1:-1], ba[2:], dim=1)
-    n1_vec /= n1_vec.norm(dim=1).unsqueeze(1)
-    n2_vec /= n2_vec.norm(dim=1).unsqueeze(1)
+    n1_vec /= (n1_vec.norm(dim=1).unsqueeze(1) + mu)
+    n2_vec /= (n2_vec.norm(dim=1).unsqueeze(1) + mu)
 
     m1_vec = torch.cross(n1_vec, ba_neg[1:-1], dim=1)
 
     x_value = torch.sum(n1_vec * n2_vec, dim=1)
     y_value = torch.sum(m1_vec * n2_vec, dim=1)
-
-    return torch.atan2(y_value, x_value)
+    res = torch.atan2(y_value, x_value)
+    return res
 
 
 def get_structure_from_angles(aa_list_encoded, angles):
@@ -265,10 +266,15 @@ def calc_angular_difference(values_1, values_2):
         assert values_2[idx].shape[1] == 3
         a1_element = values_1[idx].view(-1, 1)
         a2_element = values_2[idx].view(-1, 1)
-        acc += torch.sqrt(torch.mean(
+        diff = torch.sqrt(torch.mean(
             torch.min(torch.abs(a2_element - a1_element),
                       2 * math.pi - torch.abs(a2_element - a1_element)
                       ) ** 2))
+        if torch.isnan(diff):
+            break
+        acc += diff
+
+
     return acc / values_1.shape[0]
 
 
