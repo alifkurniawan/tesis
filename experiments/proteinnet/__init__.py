@@ -25,7 +25,7 @@ def run_experiment(parser, use_gpu):
     for hidden_size in hidden_sizes:
         for path in data_paths:
             # run experiment
-            training_file = "data/preprocessed/training_" + path + "'.hdf5"
+            training_file = "data/preprocessed/training_" + path + ".hdf5"
             validation_file = "data/preprocessed/validation.hdf5"
 
             model = ExampleModel(21, hidden_size, args.minibatch_size, use_gpu=use_gpu)  # embed size = 21
