@@ -26,9 +26,9 @@ class ExampleModel(openprotein.BaseModel):
     def __init__(self, embedding_size, minibatch_size, use_gpu):
         super(ExampleModel, self).__init__(use_gpu, embedding_size)
 
-        self.hidden_size = 25
+        self.hidden_size = 50
         self.num_lstm_layers = 2
-        self.mixture_size = 500
+        self.mixture_size = 800
         self.bi_lstm = nn.LSTM(self.get_embedding_size(), self.hidden_size,
                                num_layers=self.num_lstm_layers,
                                bidirectional=True, bias=True)
