@@ -12,7 +12,6 @@ import torch.optim as optim
 from util import set_experiment_id, write_out, write_model_to_disk, write_result_summary
 
 
-
 def train_model(data_set_identifier, model, train_loader, validation_loader,
                 learning_rate, minibatch_size=64, eval_interval=50, hide_ui=False,
                 use_gpu=False, minimum_updates=1000):

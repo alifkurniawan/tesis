@@ -23,12 +23,12 @@ torch.manual_seed(1)
 # sample model borrowed from
 # https://github.com/lblaabjerg/Master/blob/master/Models%20and%20processed%20data/ProteinNet_LSTM_500.py
 class ExampleModel(openprotein.BaseModel):
-    def __init__(self, embedding_size, minibatch_size, use_gpu):
+    def __init__(self, embedding_size, hidden_size, minibatch_size, use_gpu):
         super(ExampleModel, self).__init__(use_gpu, embedding_size)
 
-        self.hidden_size = 50
+        self.hidden_size = hidden_size
         self.num_lstm_layers = 2
-        self.mixture_size = 800
+        self.mixture_size = 500
         self.bi_lstm = nn.LSTM(self.get_embedding_size(), self.hidden_size,
                                num_layers=self.num_lstm_layers,
                                bidirectional=True, bias=True)
