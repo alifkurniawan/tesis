@@ -33,7 +33,7 @@ def run_experiment(parser, use_gpu):
             train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
             validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
 
-            train_model_path = train_model(data_set_identifier="TRAIN-hidden" + str(hidden_size) + "-" + path + "_150",
+            train_model_path = train_model(data_set_identifier="TRAIN-hidden" + str(hidden_size) + "-" + path + "_700",
                                            model=model,
                                            train_loader=train_loader,
                                            validation_loader=validation_loader,
