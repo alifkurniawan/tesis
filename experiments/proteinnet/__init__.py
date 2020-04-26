@@ -20,7 +20,7 @@ def run_experiment(parser, use_gpu):
     args, _unknown = parser.parse_known_args()
 
     # pre-process data
-    process_raw_data(use_gpu, force_pre_processing_overwrite=True)
+    process_raw_data(use_gpu, force_pre_processing_overwrite=False)
 
     for hidden_size in hidden_sizes:
         for path in data_paths:
@@ -33,7 +33,7 @@ def run_experiment(parser, use_gpu):
             train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
             validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
 
-            train_model_path = train_model(data_set_identifier="TRAIN-hidden" + str(hidden_size) + "-" + path + "_700",
+            train_model_path = train_model(data_set_identifier="TRAIN-SGDR-hidden" + str(hidden_size) + "-" + path + "_700_AdamW",
                                            model=model,
                                            train_loader=train_loader,
                                            validation_loader=validation_loader,

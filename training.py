@@ -22,8 +22,9 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     if use_gpu:
         model = model.cuda()
 
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    # optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
+    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=32)
     sample_num = list()
     train_loss_values = list()
     validation_loss_values = list()
@@ -51,6 +52,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
             write_out("Loss time:", start_compute_grad - start_compute_loss, "Grad time:",
                       end - start_compute_grad)
             optimizer.step()
+            scheduler.step()
             optimizer.zero_grad()
             model.zero_grad()
 
