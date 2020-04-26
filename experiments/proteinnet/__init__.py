@@ -20,7 +20,7 @@ def run_experiment(parser, use_gpu):
     args, _unknown = parser.parse_known_args()
 
     # pre-process data
-    process_raw_data(use_gpu, force_pre_processing_overwrite=False)
+    process_raw_data(use_gpu, force_pre_processing_overwrite=True)
 
     for hidden_size in hidden_sizes:
         for path in data_paths:

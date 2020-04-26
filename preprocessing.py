@@ -15,7 +15,7 @@ from util import calculate_dihedral_angles_over_minibatch, \
     get_backbone_positions_from_angular_prediction, encode_primary_string
 
 
-MAX_SEQUENCE_LENGTH = 150
+MAX_SEQUENCE_LENGTH = 700
 
 
 def process_raw_data(use_gpu, force_pre_processing_overwrite=True):
