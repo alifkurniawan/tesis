@@ -35,7 +35,7 @@ def run_experiment(parser, use_gpu):
             validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
 
             train_model_path = train_model(
-                data_set_identifier="TRAIN-ADAM-hidden" + str(hidden_size) + "-" + path + "_700",
+                data_set_identifier="TRAIN-SGDR-hidden" + str(hidden_size) + "-" + path + "_700",
                 model=model,
                 train_loader=train_loader,
                 validation_loader=validation_loader,
