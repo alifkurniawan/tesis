@@ -11,7 +11,7 @@ from training import train_model
 from util import contruct_dataloader_from_disk
 
 data_paths = ['30']
-hidden_sizes = [25, 50, 125, 250, 500, 800]
+hidden_sizes = [25, 50, 125, 250, 500]
 
 
 def run_experiment(parser, use_gpu):

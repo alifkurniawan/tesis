@@ -36,8 +36,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     stopping_condition_met = False
     minibatches_proccesed = 0
 
-    # while not stopping_condition_met:
-    for i in range(10):
+    while not stopping_condition_met:
         optimizer.zero_grad()
         model.zero_grad()
         loss_tracker = np.zeros(0)
@@ -93,10 +92,10 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                     if res.ok:
                         print(res.json())
 
-                # if minibatches_proccesed > minimum_updates and minibatches_proccesed \
-                #         >= best_model_minibatch_time + minimum_updates:
-                #     stopping_condition_met = True
-                #     break
+                if minibatches_proccesed > minimum_updates and minibatches_proccesed \
+                        >= best_model_minibatch_time + minimum_updates:
+                    stopping_condition_met = True
+                    break
     write_result_summary(best_model_loss)
     write_result_summary(json.dumps(best_json_data))
     return best_model_path
