@@ -10,8 +10,9 @@ from models import *
 from training import train_model
 from util import contruct_dataloader_from_disk
 
-data_paths = ['30', '50', '70', '90', '95', '100']
-hidden_sizes = [32, 64, 128, 256, 512, 800]
+data_paths = ['30']
+hidden_sizes = [25, 50, 125, 250, 500, 800]
+
 
 def run_experiment(parser, use_gpu):
     # parse experiment specific command line arguments
@@ -33,15 +34,16 @@ def run_experiment(parser, use_gpu):
             train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
             validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
 
-            train_model_path = train_model(data_set_identifier="TRAIN-SGDR-hidden" + str(hidden_size) + "-" + path + "_700_AdamW",
-                                           model=model,
-                                           train_loader=train_loader,
-                                           validation_loader=validation_loader,
-                                           learning_rate=args.learning_rate,
-                                           minibatch_size=args.minibatch_size,
-                                           eval_interval=args.eval_interval,
-                                           hide_ui=args.hide_ui,
-                                           use_gpu=use_gpu,
-                                           minimum_updates=args.minimum_updates)
+            train_model_path = train_model(
+                data_set_identifier="TRAIN-ADAM-hidden" + str(hidden_size) + "-" + path + "_700",
+                model=model,
+                train_loader=train_loader,
+                validation_loader=validation_loader,
+                learning_rate=args.learning_rate,
+                minibatch_size=args.minibatch_size,
+                eval_interval=args.eval_interval,
+                hide_ui=args.hide_ui,
+                use_gpu=use_gpu,
+                minimum_updates=args.minimum_updates)
 
             print(train_model_path)
