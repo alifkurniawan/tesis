@@ -45,7 +45,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     minibatches_proccesed = 0
 
     # while not stopping_condition_met:
-    for i in range(10):
+    for i in range(2):
         optimizer.zero_grad()
         model.zero_grad()
         loss_tracker = np.zeros(0)
