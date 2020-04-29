@@ -11,7 +11,6 @@ from training import train_model
 from util import contruct_dataloader_from_disk
 
 data_paths = ['30']
-hidden_sizes = [25, 50, 125, 250, 500]
 
 
 def run_experiment(parser, use_gpu):
@@ -23,27 +22,29 @@ def run_experiment(parser, use_gpu):
     # pre-process data
     process_raw_data(use_gpu, force_pre_processing_overwrite=False)
 
-    for hidden_size in hidden_sizes:
-        for path in data_paths:
-            # run experiment
-            training_file = "data/preprocessed/training_" + path + ".hdf5"
-            validation_file = "data/preprocessed/validation.hdf5"
+    for path in data_paths:
+        # run experiment
+        training_file = "data/preprocessed/training_" + path + ".hdf5"
+        validation_file = "data/preprocessed/validation.hdf5"
 
-            model = ExampleModel(21, hidden_size, args.minibatch_size, use_gpu=use_gpu)  # embed size = 21
+        model = ExampleModel(21, args.hidden_size, args.minibatch_size, use_gpu=use_gpu)  # embed size = 21
 
-            train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
-            validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
+        train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
+        validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
 
-            train_model_path = train_model(
-                data_set_identifier="TRAIN-SGDR-hidden" + str(hidden_size) + "-" + path + "_700",
-                model=model,
-                train_loader=train_loader,
-                validation_loader=validation_loader,
-                learning_rate=args.learning_rate,
-                minibatch_size=args.minibatch_size,
-                eval_interval=args.eval_interval,
-                hide_ui=args.hide_ui,
-                use_gpu=use_gpu,
-                minimum_updates=args.minimum_updates)
+        train_model_path = train_model(
+            data_set_identifier="train-" + args.optimizer_type + "-hidden" + str(
+                args.hidden_size) + "-" + path + "_700_epoch_10",
+            model=model,
+            train_loader=train_loader,
+            validation_loader=validation_loader,
+            learning_rate=args.learning_rate,
+            minibatch_size=args.minibatch_size,
+            eval_interval=args.eval_interval,
+            hide_ui=args.hide_ui,
+            use_gpu=use_gpu,
+            optimizer_type=args.optimizer_type,
+            restart=args.restart,
+            minimum_updates=args.minimum_updates)
 
-            print(train_model_path)
+        print(train_model_path)

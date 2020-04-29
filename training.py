@@ -14,7 +14,8 @@ from util import set_experiment_id, write_out, write_model_to_disk, write_result
 
 def train_model(data_set_identifier, model, train_loader, validation_loader,
                 learning_rate, minibatch_size=64, eval_interval=50, hide_ui=False,
-                use_gpu=False, minimum_updates=1000):
+                use_gpu=False, minimum_updates=1000,
+                optimizer_type='adam', restart=False):
     set_experiment_id(data_set_identifier, learning_rate, minibatch_size)
 
     validation_dataset_size = validation_loader.dataset.__len__()
@@ -22,9 +23,16 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     if use_gpu:
         model = model.cuda()
 
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=32)
+    if optimizer_type == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimizer_type == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    elif optimizer_type == 'rmsprop':
+        optimizer = optim.RMSprop(model.parameters(), lr=0.01)
+
+    if restart:
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=32)
+
     sample_num = list()
     train_loss_values = list()
     validation_loss_values = list()
@@ -36,7 +44,8 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     stopping_condition_met = False
     minibatches_proccesed = 0
 
-    while not stopping_condition_met:
+    # while not stopping_condition_met:
+    for i in range(10):
         optimizer.zero_grad()
         model.zero_grad()
         loss_tracker = np.zeros(0)
@@ -52,7 +61,8 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
             write_out("Loss time:", start_compute_grad - start_compute_loss, "Grad time:",
                       end - start_compute_grad)
             optimizer.step()
-            scheduler.step()
+            if restart:
+                scheduler.step()
             optimizer.zero_grad()
             model.zero_grad()
 
@@ -92,10 +102,10 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                     if res.ok:
                         print(res.json())
 
-                if minibatches_proccesed > minimum_updates and minibatches_proccesed \
-                        >= best_model_minibatch_time + minimum_updates:
-                    stopping_condition_met = True
-                    break
+                # if minibatches_proccesed > minimum_updates and minibatches_proccesed \
+                #         >= best_model_minibatch_time + minimum_updates:
+                #     stopping_condition_met = True
+                #     break
     write_result_summary(best_model_loss)
     write_result_summary(json.dumps(best_json_data))
     return best_model_path

@@ -35,6 +35,12 @@ def main():
                         default=8, help='Size of each minibatch.')
     parser.add_argument('--experiment-id', dest='experiment_id', type=str,
                         default="example", help='Which experiment to run.')
+    parser.add_argument('--hidden-size', dest='hidden_size', type=int,
+                        default=25, help='LSTM hidden size')
+    parser.add_argument('--optimizer', dest='optimizer_type', type=str,
+                        default='adam', help='Optimizer')
+    parser.add_argument('--restart', dest='restart', action='store_true',
+                        default=False, help='Restart')
     args, _ = parser.parse_known_args()
 
     if args.hide_ui:
