@@ -29,6 +29,8 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
         optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     elif optimizer_type == 'rmsprop':
         optimizer = optim.RMSprop(model.parameters(), lr=0.01)
+    else:
+        optimizer = optim.AdamW(model.parameters(), lr=0.01)
 
     if restart:
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=32)
