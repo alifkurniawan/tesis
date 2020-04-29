@@ -34,7 +34,7 @@ def run_experiment(parser, use_gpu):
 
         train_model_path = train_model(
             data_set_identifier="train-" + args.optimizer_type + "-hidden" + str(
-                args.hidden_size) + "-" + path + "_700_epoch_10",
+                args.hidden_size) + "-" + path + "_700_epoch_1_" + 'restart' if args.restart else '',
             model=model,
             train_loader=train_loader,
             validation_loader=validation_loader,
