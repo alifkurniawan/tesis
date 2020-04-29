@@ -26,11 +26,11 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     if optimizer_type == 'adam':
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     elif optimizer_type == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
     elif optimizer_type == 'rmsprop':
-        optimizer = optim.RMSprop(model.parameters(), lr=0.01)
+        optimizer = optim.RMSprop(model.parameters(), lr=learning_rate)
     else:
-        optimizer = optim.AdamW(model.parameters(), lr=0.01)
+        optimizer = optim.AdamW(model.parameters(), lr=learning_rate)
 
     if restart:
         scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=32)
