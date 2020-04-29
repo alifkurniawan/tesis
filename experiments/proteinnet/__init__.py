@@ -31,10 +31,12 @@ def run_experiment(parser, use_gpu):
 
         train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
         validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)
-
+        identifier = "train-{0}-hidden{1}-training_{2}{3}-700-batch32".format(args.optimizer_type,
+                                                                      str(args.hidden_size),
+                                                                      path,
+                                                                      '-restart' if args.restart else '')
         train_model_path = train_model(
-            data_set_identifier="train-" + args.optimizer_type + "-hidden" + str(
-                args.hidden_size) + "-" + path + "_700_epoch_1_" + 'restart' if args.restart else '',
+            data_set_identifier=identifier,
             model=model,
             train_loader=train_loader,
             validation_loader=validation_loader,
