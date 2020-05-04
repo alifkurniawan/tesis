@@ -52,24 +52,29 @@ class ExampleModel(openprotein.BaseModel):
                              autograd.Variable(initial_cell_state))
 
     def _get_network_emissions(self, original_aa_string):
+        # set input
         packed_input_sequences = self.embed(original_aa_string)
         minibatch_size = int(packed_input_sequences[1][0])
+
+        # set init
         self.init_hidden(minibatch_size)
-        (data, bi_lstm_batches, _, _), self.hidden_layer = self.bi_lstm(
-            packed_input_sequences, self.hidden_layer)
+
+        # bi-LSTM
+        (data, bi_lstm_batches, _, _), self.hidden_layer = self.bi_lstm(packed_input_sequences, self.hidden_layer)
+
+        # convert hidden to label
         emissions_padded, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
             torch.nn.utils.rnn.PackedSequence(self.hidden_to_labels(data), bi_lstm_batches))
-        emissions = emissions_padded.transpose(0, 1)\
-            .transpose(1, 2)  # minibatch_size, self.mixture_size, -1
+        emissions = emissions_padded.transpose(0, 1).transpose(1, 2)  # minibatch_size, self.mixture_size, -1
         emissions = self.batch_norm(emissions)
         emissions = emissions.transpose(1, 2)  # (minibatch_size, -1, self.mixture_size)
         probabilities = torch.exp(self.soft(emissions))
-        output_angles = self.softmax_to_angle(probabilities)\
-            .transpose(0, 1)  # max size, minibatch size, 3 (angles)
-        backbone_atoms_padded, _ = \
-            get_backbone_positions_from_angular_prediction(output_angles,
-                                                           batch_sizes,
-                                                           self.use_gpu)
+        output_angles = self.softmax_to_angle(probabilities).transpose(0, 1)  # max size, minibatch size, 3 (angles)
+
+        # get backbond coordinates
+        backbone_atoms_padded, _ = get_backbone_positions_from_angular_prediction(output_angles,
+                                                                                  batch_sizes,
+                                                                                  self.use_gpu)
         return output_angles, backbone_atoms_padded, batch_sizes
 
 
@@ -77,8 +82,8 @@ class SoftToAngle(nn.Module):
     def __init__(self, mixture_size):
         super(SoftToAngle, self).__init__()
         # Omega Initializer
-        omega_components1 = np.random.uniform(0, 1, int(mixture_size*0.1)) # set omega 90/10 pos/neg
-        omega_components2 = np.random.uniform(2, math.pi, int(mixture_size*0.9))
+        omega_components1 = np.random.uniform(0, 1, int(mixture_size * 0.1))  # set omega 90/10 pos/neg
+        omega_components2 = np.random.uniform(2, math.pi, int(mixture_size * 0.9))
         omega_components = np.concatenate((omega_components1, omega_components2))
         np.random.shuffle(omega_components)
 
