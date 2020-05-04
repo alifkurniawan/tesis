@@ -94,7 +94,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
 
                 json_data["validation_dataset_size"] = validation_dataset_size
                 json_data["sample_num"] = sample_num
-                json_data["train_loss_values"] = train_loss_values
+                json_d:qata["train_loss_values"] = train_loss_values
                 json_data["validation_loss_values"] = validation_loss_values
 
                 write_out(json_data)
