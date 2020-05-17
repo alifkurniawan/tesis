@@ -7,6 +7,7 @@ For license information, please see the LICENSE file in the root directory.
 import math
 import torch
 import torch.autograd as autograd
+from torch.autograd import Variable
 import torch.nn as nn
 import numpy as np
 import openprotein
@@ -15,10 +16,11 @@ from util import structures_to_backbone_atoms_padded
 from util import get_backbone_positions_from_angular_prediction
 from util import calculate_dihedral_angles_over_minibatch
 from util import pass_messages
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+import torch.nn.functional as F
 
 # seed random generator for reproducibility
 torch.manual_seed(1)
-
 
 # sample model borrowed from
 # https://github.com/lblaabjerg/Master/blob/master/Models%20and%20processed%20data/ProteinNet_LSTM_500.py
