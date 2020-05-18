@@ -3,16 +3,17 @@ from torch.autograd import Variable
 import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import torch.nn.functional as F
-
+from rgn.geometric_unit import geometric_unit
 torch.manual_seed(1)
 
 
 class RgnModel(nn.Module):
     def __init__(self, embedding_size, minibatch_size, hidden_size=800, linear_units=20, use_gpu=False):
         super(RgnModel, self).__init__()
-        self.num_lstm_layers = 2
+
         self.hidden_size = hidden_size
-        self.bi_lstm = nn.LSTM(self.get_embedding_size(), hidden_size=self.hidden_size, num_layers=self.num_lstm_layers,
+        self.num_layers = 2
+        self.lstm = nn.LSTM(embedding_size, hidden_size=self.hidden_size, num_layers=self.num_layers,
                                bidirectional=True)
         # initialize alphabet to random values between -pi and pi
         u = torch.distributions.Uniform(-3.14, 3.14)

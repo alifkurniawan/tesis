@@ -86,7 +86,7 @@ def encode_sequence(sequence, onehot=True):
     vec = []
     for chain in sequence:
         for c in chain:
-            for aa, val in aa2ix.iteritems():
+            for aa, val in aa2ix.items():
                 if c == aa:
                     vec.append(val)
     if onehot:
