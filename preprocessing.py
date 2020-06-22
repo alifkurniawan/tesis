@@ -15,10 +15,8 @@ from util import calculate_dihedral_angles_over_minibatch, \
     get_backbone_positions_from_angular_prediction, encode_primary_string
 
 
-MAX_SEQUENCE_LENGTH = 700
-
-
-def process_raw_data(use_gpu, force_pre_processing_overwrite=True):
+def process_raw_data(use_gpu=False, path='data/preprocessed', max_sequence_length=2000, force_pre_processing_overwrite=True,
+                     use_mask=True):
     print("Starting pre-processing of raw data...")
     input_files = glob.glob("data/raw/*")
     print(input_files)
@@ -28,7 +26,7 @@ def process_raw_data(use_gpu, force_pre_processing_overwrite=True):
             filename = file_path.split('\\')[-1]
         else:
             filename = file_path.split('/')[-1]
-        preprocessed_file_name = "data/preprocessed/" + filename + ".hdf5"
+        preprocessed_file_name = path + "/" + filename + ".hdf5"
 
         # check if we should remove the any previously processed files
         if os.path.isfile(preprocessed_file_name):
@@ -40,7 +38,8 @@ def process_raw_data(use_gpu, force_pre_processing_overwrite=True):
                 print("Skipping pre-processing for this file...")
 
         if not os.path.isfile(preprocessed_file_name):
-            process_file(filename, preprocessed_file_name, use_gpu)
+            process_file(filename, preprocessed_file_name, use_gpu, max_sequence_length=max_sequence_length,
+                         use_mask=use_mask)
     print("Completed pre-processing.")
 
 
@@ -84,20 +83,22 @@ def read_protein_from_file(file_pointer):
             return None
 
 
-def process_file(input_file, output_file, use_gpu):
+def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use_mask=True):
     print("Processing raw data file", input_file)
 
     # create output file
     file = h5py.File(output_file, 'w')
     current_buffer_size = 1
     current_buffer_allocation = 0
-    dset1 = file.create_dataset('primary', (current_buffer_size, MAX_SEQUENCE_LENGTH),
-                                maxshape=(None, MAX_SEQUENCE_LENGTH), dtype='int32')
-    dset2 = file.create_dataset('tertiary', (current_buffer_size, MAX_SEQUENCE_LENGTH, 9),
-                                maxshape=(None, MAX_SEQUENCE_LENGTH, 9), dtype='float')
-    dset3 = file.create_dataset('mask', (current_buffer_size, MAX_SEQUENCE_LENGTH),
-                                maxshape=(None, MAX_SEQUENCE_LENGTH),
+    dset1 = file.create_dataset('primary', (current_buffer_size, max_sequence_length),
+                                maxshape=(None, max_sequence_length), dtype='int32')
+    dset2 = file.create_dataset('tertiary', (current_buffer_size, max_sequence_length, 9),
+                                maxshape=(None, max_sequence_length, 9), dtype='float')
+    dset3 = file.create_dataset('mask', (current_buffer_size, max_sequence_length),
+                                maxshape=(None, max_sequence_length),
                                 dtype='uint8')
+    dset4 = file.create_dataset('pssm', (current_buffer_size, max_sequence_length, 21),
+                                maxshape=(None, max_sequence_length, 21), dtype='float')
 
     input_file_pointer = open("data/raw/" + input_file, "r")
 
@@ -109,19 +110,21 @@ def process_file(input_file, output_file, use_gpu):
 
         sequence_length = len(next_protein['primary'])
 
-        if sequence_length > MAX_SEQUENCE_LENGTH:
-            print("Dropping protein as length too long:", sequence_length)
+        if sequence_length > max_sequence_length:
+            # print("Dropping protein as length too long:", sequence_length)
             continue
 
         if current_buffer_allocation >= current_buffer_size:
             current_buffer_size = current_buffer_size + 1
-            dset1.resize((current_buffer_size, MAX_SEQUENCE_LENGTH))
-            dset2.resize((current_buffer_size, MAX_SEQUENCE_LENGTH, 9))
-            dset3.resize((current_buffer_size, MAX_SEQUENCE_LENGTH))
+            dset1.resize((current_buffer_size, max_sequence_length))
+            dset2.resize((current_buffer_size, max_sequence_length, 9))
+            dset3.resize((current_buffer_size, max_sequence_length))
+            dset4.resize((current_buffer_size, max_sequence_length, 21))
 
-        primary_padded = np.zeros(MAX_SEQUENCE_LENGTH)
-        tertiary_padded = np.zeros((9, MAX_SEQUENCE_LENGTH))
-        mask_padded = np.zeros(MAX_SEQUENCE_LENGTH)
+        primary_padded = np.zeros(max_sequence_length)
+        tertiary_padded = np.zeros((9, max_sequence_length))
+        mask_padded = np.zeros(max_sequence_length)
+        pssm_padded = np.zeros((21, max_sequence_length))
 
         # masking and padding here happens so that the stored dataset is of the same size.
         # when the data is loaded in this padding is removed again.
@@ -131,39 +134,47 @@ def process_file(input_file, output_file, use_gpu):
 
         tertiary_padded[:, :sequence_length] = t_reshaped
         mask_padded[:sequence_length] = next_protein['mask']
+        pssm_padded[:, :sequence_length] = np.array(next_protein['evolutionary'])
 
-        mask = torch.Tensor(mask_padded).type(dtype=torch.bool)
+        if use_mask:
+            mask = torch.Tensor(mask_padded).type(dtype=torch.bool)
 
-        prim = torch.masked_select(torch.Tensor(primary_padded)
-                                   .type(dtype=torch.long), mask)
-        pos = torch.masked_select(torch.Tensor(tertiary_padded), mask)\
-                  .view(9, -1).transpose(0, 1).unsqueeze(1) / 100
+            prim = torch.masked_select(torch.Tensor(primary_padded)
+                                       .type(dtype=torch.long), mask)
 
-        if use_gpu:
-            pos = pos.cuda()
+            pos = torch.masked_select(torch.Tensor(tertiary_padded), mask) \
+                      .view(9, -1).transpose(0, 1).unsqueeze(1) / 100
 
-        angles, batch_sizes = calculate_dihedral_angles_over_minibatch(pos,
-                                                                       [len(prim)],
-                                                                       use_gpu=use_gpu)
+            pssm = torch.masked_select(torch.Tensor(pssm_padded), mask).view(21, -1).transpose(0, 1)
 
-        tertiary, _ = get_backbone_positions_from_angular_prediction(angles,
-                                                                     batch_sizes,
-                                                                     use_gpu=use_gpu)
-        tertiary = tertiary.squeeze(1)
+            if use_gpu:
+                pos = pos.cuda()
 
-        primary_padded = np.zeros(MAX_SEQUENCE_LENGTH)
-        tertiary_padded = np.zeros((MAX_SEQUENCE_LENGTH, 9))
+            angles, batch_sizes = calculate_dihedral_angles_over_minibatch(pos,
+                                                                           [len(prim)],
+                                                                           use_gpu=use_gpu)
 
-        length_after_mask_removed = len(prim)
+            tertiary, _ = get_backbone_positions_from_angular_prediction(angles,
+                                                                         batch_sizes,
+                                                                         use_gpu=use_gpu)
+            tertiary = tertiary.squeeze(1)
 
-        primary_padded[:length_after_mask_removed] = prim.data.cpu().numpy()
-        tertiary_padded[:length_after_mask_removed, :] = tertiary.data.cpu().numpy()
-        mask_padded = np.zeros(MAX_SEQUENCE_LENGTH)
-        mask_padded[:length_after_mask_removed] = np.ones(length_after_mask_removed)
+            primary_padded = np.zeros(max_sequence_length)
+            tertiary_padded = np.zeros((max_sequence_length, 9))
+            pssm_padded = np.zeros((max_sequence_length, 21))
+
+            length_after_mask_removed = len(prim)
+
+            primary_padded[:length_after_mask_removed] = prim.data.cpu().numpy()
+            tertiary_padded[:length_after_mask_removed, :] = tertiary.data.cpu().numpy()
+            pssm_padded[:length_after_mask_removed, :] = pssm.data.cpu().numpy()
+            mask_padded = np.zeros(max_sequence_length)
+            mask_padded[:length_after_mask_removed] = np.ones(length_after_mask_removed)
 
         dset1[current_buffer_allocation] = primary_padded
         dset2[current_buffer_allocation] = tertiary_padded
         dset3[current_buffer_allocation] = mask_padded
+        dset4[current_buffer_allocation] = pssm_padded
         current_buffer_allocation += 1
 
     print("Wrote output to", current_buffer_allocation, "proteins to", output_file)
@@ -172,3 +183,39 @@ def process_file(input_file, output_file, use_gpu):
 def filter_input_files(input_files):
     disallowed_file_endings = (".gitignore", ".DS_Store")
     return list(filter(lambda x: not x.endswith(disallowed_file_endings), input_files))
+
+
+def count(bin_size=1):
+    print("Starting count of raw data...")
+    input_files = glob.glob("data/raw/*")
+    print(input_files)
+    input_files_filtered = filter_input_files(input_files)
+    stats = {}
+    for file_path in input_files_filtered:
+        print('Count', file_path)
+        input_file_pointer = open(file_path, "r")
+        stats[file_path] = {}
+        stats[file_path]['total'] = 0
+        stats[file_path]['stats'] = {}
+
+        while True:
+            # while there's more proteins to process
+            next_protein = read_protein_from_file(input_file_pointer)
+            if next_protein is None:
+                break
+            stats[file_path]['total'] += 1
+            protein_len = len(next_protein['primary']) // bin_size
+            if protein_len in stats[file_path]['stats'].keys():
+                stats[file_path]['stats'][protein_len] += 1
+            else:
+                stats[file_path]['stats'][protein_len] = 1
+
+
+    with open('stat.txt', 'w') as f:
+        f.write(str(stats))
+
+    print("Completed counting of raw data.")
+
+
+process_raw_data(path='data/preprocessed_150', max_sequence_length=150)
+
