@@ -14,6 +14,7 @@ import PeptideBuilder
 import Bio.PDB
 import numpy as np
 import pnerf.pnerf as pnerf
+from typing import Union
 
 AA_ID_DICT = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K': 9,
               'L': 10, 'M': 11, 'N': 12, 'P': 13, 'Q': 14, 'R': 15, 'S': 16, 'T': 17,
@@ -21,8 +22,8 @@ AA_ID_DICT = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K
 
 mu = 0.00001
 
-def contruct_dataloader_from_disk(filename, minibatch_size):
-    return torch.utils.data.DataLoader(H5PytorchDataset(filename),
+def contruct_dataloader_from_disk(filename, minibatch_size, pretrained=False):
+    return torch.utils.data.DataLoader(H5PytorchDataset(filename, pretrained),
                                        batch_size=minibatch_size,
                                        shuffle=True,
                                        collate_fn=merge_samples_to_minibatch)
@@ -34,6 +35,7 @@ class H5PytorchDataset(torch.utils.data.Dataset):
 
         self.h5pyfile = h5py.File(filename, 'r')
         self.num_proteins, self.max_sequence_len = self.h5pyfile['primary'].shape
+
 
     def __getitem__(self, index):
         mask = torch.Tensor(self.h5pyfile['mask'][index, :]).type(dtype=torch.bool)

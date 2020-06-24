@@ -13,9 +13,11 @@ import h5py
 import torch
 from util import calculate_dihedral_angles_over_minibatch, \
     get_backbone_positions_from_angular_prediction, encode_primary_string
+from tape.tokenizers import TAPETokenizer
 
 
-def process_raw_data(use_gpu=False, path='data/preprocessed', max_sequence_length=2000, force_pre_processing_overwrite=True,
+def process_raw_data(use_gpu=False, path='data/preprocessed', max_sequence_length=150,
+                     force_pre_processing_overwrite=True,
                      use_mask=True):
     print("Starting pre-processing of raw data...")
     input_files = glob.glob("data/raw/*")
@@ -58,8 +60,10 @@ def read_protein_from_file(file_pointer):
             id_ = file_pointer.readline()[:-1]
             dict_.update({'id': id_})
         elif next_line == '[PRIMARY]\n':
-            primary = encode_primary_string(file_pointer.readline()[:-1])
+            primary_str = file_pointer.readline()[:-1]
+            primary = encode_primary_string(primary_str)
             dict_.update({'primary': primary})
+            dict_.update({'seq': primary_str})
         elif next_line == '[EVOLUTIONARY]\n':
             evolutionary = []
             for _residue in range(21):
@@ -83,8 +87,11 @@ def read_protein_from_file(file_pointer):
             return None
 
 
-def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use_mask=True):
+def process_file(input_file, output_file, use_gpu, max_sequence_length, use_mask=True, vocab='iupac'):
     print("Processing raw data file", input_file)
+
+    # set tokenizer
+    tokenizer = TAPETokenizer(vocab=vocab)
 
     # create output file
     file = h5py.File(output_file, 'w')
@@ -99,6 +106,8 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
                                 dtype='uint8')
     dset4 = file.create_dataset('pssm', (current_buffer_size, max_sequence_length, 21),
                                 maxshape=(None, max_sequence_length, 21), dtype='float')
+    dset5 = file.create_dataset('primary_token', (current_buffer_size, 2 * max_sequence_length),
+                                maxshape=(None, 2 * max_sequence_length), dtype='int32')
 
     input_file_pointer = open("data/raw/" + input_file, "r")
 
@@ -111,7 +120,7 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
         sequence_length = len(next_protein['primary'])
 
         if sequence_length > max_sequence_length:
-            # print("Dropping protein as length too long:", sequence_length)
+            print("Dropping protein as length too long:", sequence_length)
             continue
 
         if current_buffer_allocation >= current_buffer_size:
@@ -120,15 +129,18 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
             dset2.resize((current_buffer_size, max_sequence_length, 9))
             dset3.resize((current_buffer_size, max_sequence_length))
             dset4.resize((current_buffer_size, max_sequence_length, 21))
+            dset5.resize((current_buffer_size, 2 * max_sequence_length))
 
         primary_padded = np.zeros(max_sequence_length)
         tertiary_padded = np.zeros((9, max_sequence_length))
         mask_padded = np.zeros(max_sequence_length)
         pssm_padded = np.zeros((21, max_sequence_length))
+        primary_token_padded = np.zeros(2 * max_sequence_length)
 
         # masking and padding here happens so that the stored dataset is of the same size.
         # when the data is loaded in this padding is removed again.
         primary_padded[:sequence_length] = next_protein['primary']
+
         t_transposed = np.ravel(np.array(next_protein['tertiary']).T)
         t_reshaped = np.reshape(t_transposed, (sequence_length, 9)).T
 
@@ -141,6 +153,7 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
 
             prim = torch.masked_select(torch.Tensor(primary_padded)
                                        .type(dtype=torch.long), mask)
+            seq_token = torch.Tensor(tokenization(tokenizer, next_protein['seq'], next_protein['mask']))
 
             pos = torch.masked_select(torch.Tensor(tertiary_padded), mask) \
                       .view(9, -1).transpose(0, 1).unsqueeze(1) / 100
@@ -166,6 +179,7 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
             length_after_mask_removed = len(prim)
 
             primary_padded[:length_after_mask_removed] = prim.data.cpu().numpy()
+            primary_token_padded[:len(seq_token)] = seq_token.cpu().numpy()
             tertiary_padded[:length_after_mask_removed, :] = tertiary.data.cpu().numpy()
             pssm_padded[:length_after_mask_removed, :] = pssm.data.cpu().numpy()
             mask_padded = np.zeros(max_sequence_length)
@@ -175,6 +189,7 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length=2000, use
         dset2[current_buffer_allocation] = tertiary_padded
         dset3[current_buffer_allocation] = mask_padded
         dset4[current_buffer_allocation] = pssm_padded
+        dset5[current_buffer_allocation] = primary_token_padded
         current_buffer_allocation += 1
 
     print("Wrote output to", current_buffer_allocation, "proteins to", output_file)
@@ -210,12 +225,13 @@ def count(bin_size=1):
             else:
                 stats[file_path]['stats'][protein_len] = 1
 
-
     with open('stat.txt', 'w') as f:
         f.write(str(stats))
 
     print("Completed counting of raw data.")
 
 
-process_raw_data(path='data/preprocessed_150', max_sequence_length=150)
-
+def tokenization(tokenizer, aa_seq, mask):
+    masked_seq = ''.join([aa_seq[i] for i in range(len(aa_seq)) if mask[i] == 1])
+    token_ids = tokenizer.encode(masked_seq)
+    return token_ids

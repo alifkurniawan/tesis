@@ -26,7 +26,7 @@ def main():
         write_out("CUDA is available, using GPU")
         uge_gpu = True
 
-    process_raw_data(uge_gpu, force_pre_processing_overwrite=args.force_pre_processing_overwrite)
+    process_raw_data(uge_gpu, force_pre_processing_overwrite=args.no_force_pre_processing_overwrite)
 
 
 main()
