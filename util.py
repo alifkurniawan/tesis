@@ -14,7 +14,7 @@ import PeptideBuilder
 import Bio.PDB
 import numpy as np
 import pnerf.pnerf as pnerf
-from typing import Union
+
 
 AA_ID_DICT = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K': 9,
               'L': 10, 'M': 11, 'N': 12, 'P': 13, 'Q': 14, 'R': 15, 'S': 16, 'T': 17,
@@ -22,8 +22,9 @@ AA_ID_DICT = {'A': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'K
 
 mu = 0.00001
 
+
 def contruct_dataloader_from_disk(filename, minibatch_size, pretrained=False):
-    return torch.utils.data.DataLoader(H5PytorchDataset(filename, pretrained),
+    return torch.utils.data.DataLoader(H5PytorchDataset(filename),
                                        batch_size=minibatch_size,
                                        shuffle=True,
                                        collate_fn=merge_samples_to_minibatch)
@@ -36,14 +37,14 @@ class H5PytorchDataset(torch.utils.data.Dataset):
         self.h5pyfile = h5py.File(filename, 'r')
         self.num_proteins, self.max_sequence_len = self.h5pyfile['primary'].shape
 
-
     def __getitem__(self, index):
         mask = torch.Tensor(self.h5pyfile['mask'][index, :]).type(dtype=torch.bool)
         prim = torch.masked_select(
             torch.Tensor(self.h5pyfile['primary'][index, :]).type(dtype=torch.long),
             mask)
-        tertiary = torch.Tensor(self.h5pyfile['tertiary'][index][:int(mask.sum())])# max length x 9
-        return prim, tertiary, mask
+        tertiary = torch.Tensor(self.h5pyfile['tertiary'][index][:int(mask.sum())])  # max length x 9
+        pssm = torch.Tensor(self.h5pyfile['pssm'][index][:int(mask.sum())])
+        return prim, tertiary, mask, pssm
 
     def __len__(self):
         return self.num_proteins
@@ -56,6 +57,7 @@ def merge_samples_to_minibatch(samples):
     # sort according to length of aa sequence
     samples_list.sort(key=lambda x: len(x[0]), reverse=True)
     return zip(*samples_list)
+
 
 def set_experiment_id(data_set_identifier, learning_rate, minibatch_size):
     output_string = datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
@@ -173,7 +175,7 @@ def calculate_dihedral_angles(atomic_coords, use_gpu):
 def compute_dihedral_list(atomic_coords):
     # atomic_coords is -1 x 3
     ba = atomic_coords[1:] - atomic_coords[:-1]
-    ba /= (ba.norm(dim=1).unsqueeze(1) + mu) # prevent zero divider
+    ba /= (ba.norm(dim=1).unsqueeze(1) + mu)  # prevent zero divider
     ba_neg = -1 * ba
 
     n1_vec = torch.cross(ba[:-2], ba_neg[1:-1], dim=1)
@@ -276,7 +278,6 @@ def calc_angular_difference(values_1, values_2):
             break
         acc += diff
 
-
     return acc / values_1.shape[0]
 
 
@@ -302,7 +303,7 @@ def get_backbone_positions_from_angular_prediction(angular_emissions, batch_size
     # angular_emissions -1 x minibatch size x 3 (omega, phi, psi)
     points = pnerf.dihedral_to_point(angular_emissions, use_gpu)
     coordinates = pnerf.point_to_coordinate(points, use_gpu) / 100  # devide by 100 to angstrom unit
-    return coordinates.transpose(0, 1).contiguous()\
+    return coordinates.transpose(0, 1).contiguous() \
                .view(len(batch_sizes), -1, 9).transpose(0, 1), batch_sizes
 
 
@@ -342,14 +343,14 @@ def pass_messages(aa_features, message_transformation, use_gpu):
     # message_transformation: (-1 * 2 * feature_size) -> (-1 * output message size)
     feature_size = aa_features.size(1)
     aa_count = aa_features.size(0)
-    eye = torch.eye(aa_count, dtype=torch.uint8).view(-1).expand(2, feature_size, -1)\
+    eye = torch.eye(aa_count, dtype=torch.uint8).view(-1).expand(2, feature_size, -1) \
         .transpose(1, 2).transpose(0, 1)
     eye_inverted = torch.ones(eye.size(), dtype=torch.uint8) - eye
     if use_gpu:
         eye_inverted = eye_inverted.cuda()
     features_repeated = aa_features.repeat((aa_count, 1)).view((aa_count, aa_count, feature_size))
     # (aa_count^2 - aa_count) x 2 x aa_features     (all pairs except for reflexive connections)
-    aa_messages = torch.stack((features_repeated.transpose(0, 1), features_repeated))\
+    aa_messages = torch.stack((features_repeated.transpose(0, 1), features_repeated)) \
         .transpose(0, 1).transpose(1, 2).view(-1, 2, feature_size)
     aa_msg_pairs = torch.masked_select(aa_messages, eye_inverted).view(-1, 2, feature_size)
     transformed = message_transformation(aa_msg_pairs).view(aa_count, aa_count - 1, -1)

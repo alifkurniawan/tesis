@@ -13,7 +13,6 @@ from util import calculate_dihedral_angles_over_minibatch, calc_angular_differen
     get_structure_from_angles, write_to_pdb
 
 
-
 class BaseModel(nn.Module):
     def __init__(self, use_gpu, embedding_size):
         super(BaseModel, self).__init__()
@@ -27,7 +26,7 @@ class BaseModel(nn.Module):
     def get_embedding_size(self):
         return self.embedding_size
 
-    def embed(self, original_aa_string):
+    def embed(self, original_aa_string, pssm=-1):
         data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
             torch.nn.utils.rnn.pack_sequence(original_aa_string))
 
@@ -38,27 +37,38 @@ class BaseModel(nn.Module):
         if self.use_gpu:
             prot_aa_list = prot_aa_list.cuda()
             embed_tensor = embed_tensor.cuda()
-        input_sequences = embed_tensor.scatter_(1, prot_aa_list.data, 1).transpose(1, 2)
+        one_hot_encoding = embed_tensor.scatter_(1, prot_aa_list.data, 1).transpose(1, 2)
+
+        # add pssm as input
+        if pssm is not -1:
+            pssm_data, pssm_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                torch.nn.utils.rnn.pack_sequence(pssm))
+
+            input_sequences = torch.zeros(one_hot_encoding.size(0), one_hot_encoding.size(1),
+                                          one_hot_encoding.size(2) + pssm_data.size(2))
+            input_sequences[:, :, :one_hot_encoding.size(2)] = one_hot_encoding
+            input_sequences[:, :, pssm_data.size(2):] = pssm_data
+        else:
+            input_sequences = one_hot_encoding
+
         end = time.time()
         write_out("Embed time:", end - start_compute_embed)
         packed_input_sequences = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
+
         return packed_input_sequences
 
     def compute_loss(self, minibatch):
-        (original_aa_string, actual_coords_list, _) = minibatch
+        (original_aa_string, actual_coords_list, _, pssms) = minibatch
 
-        emissions, _backbone_atoms_padded, _batch_sizes = \
-            self._get_network_emissions(original_aa_string)
-        actual_coords_list_padded, batch_sizes_coords = torch.nn.utils.rnn\
-            .pad_packed_sequence(
-                torch.nn.utils.rnn.pack_sequence(actual_coords_list))
+        emissions, _backbone_atoms_padded, _batch_sizes = self._get_network_emissions(original_aa_string, pssms)
+        actual_coords_list_padded, batch_sizes_coords = torch.nn.utils.rnn.pad_packed_sequence(
+            torch.nn.utils.rnn.pack_sequence(actual_coords_list))
         if self.use_gpu:
             actual_coords_list_padded = actual_coords_list_padded.cuda()
         start = time.time()
-        emissions_actual, _ = \
-            calculate_dihedral_angles_over_minibatch(actual_coords_list_padded,
-                                                     batch_sizes_coords,
-                                                     self.use_gpu)
+        emissions_actual, _ = calculate_dihedral_angles_over_minibatch(actual_coords_list_padded,
+                                                                       batch_sizes_coords,
+                                                                       self.use_gpu)
         # drmsd_avg = calc_avg_drmsd_over_minibatch(backbone_atoms_padded,
         #                                           actual_coords_list_padded,
         #                                           batch_sizes)
@@ -91,10 +101,10 @@ class BaseModel(nn.Module):
                                       cpu_predicted_backbone_atoms))
             data_total.extend(minibatch_data)
             start = time.time()
-            for primary_sequence, tertiary_positions, _predicted_pos, predicted_backbone_atoms\
+            for primary_sequence, tertiary_positions, _predicted_pos, predicted_backbone_atoms \
                     in minibatch_data:
                 actual_coords = tertiary_positions.transpose(0, 1).contiguous().view(-1, 3)
-                predicted_coords = predicted_backbone_atoms[:len(primary_sequence)]\
+                predicted_coords = predicted_backbone_atoms[:len(primary_sequence)] \
                     .transpose(0, 1).contiguous().view(-1, 3).detach()
                 rmsd = calc_rmsd(predicted_coords, actual_coords)
                 drmsd = calc_drmsd(predicted_coords, actual_coords)

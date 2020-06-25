@@ -6,7 +6,7 @@ For license information, please see the LICENSE file in the root directory.
 
 from preprocessing import process_raw_data
 
-from models import *
+from utgn import *
 from training import train_model
 from util import contruct_dataloader_from_disk
 
