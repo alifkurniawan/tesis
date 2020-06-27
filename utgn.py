@@ -55,7 +55,7 @@ class UTGN(openprotein.BaseModel):
 
         self.src_mask = None
 
-        self.emb = ProteinBertModel.from_pretrained('bert-base')
+        # self.emb = ProteinBertModel.from_pretrained('bert-base')
 
         self.W = nn.Linear(self.embedding_dim, self.num_vocab)
 
