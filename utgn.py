@@ -76,9 +76,9 @@ class UTGN(openprotein.BaseModel):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def _get_network_emissions(self, original_aa_string, pssm=-1):
+    def _get_network_emissions(self, original_aa_string, pssm=-1, primary_token=-1):
         # set input
-        packed_input_sequences = self.embed(original_aa_string, pssm)
+        packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
         minibatch_size = int(packed_input_sequences[1][0])
 
         if self.src_mask is None or self.src_mask.size(0) != packed_input_sequences[1].size(0):

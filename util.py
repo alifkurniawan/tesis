@@ -44,7 +44,8 @@ class H5PytorchDataset(torch.utils.data.Dataset):
             mask)
         tertiary = torch.Tensor(self.h5pyfile['tertiary'][index][:int(mask.sum())])  # max length x 9
         pssm = torch.Tensor(self.h5pyfile['pssm'][index][:int(mask.sum())])
-        return prim, tertiary, mask, pssm
+        primary_token = torch.Tensor(self.h5pyfile['primary_token'][index][:int(mask.sum())])
+        return prim, tertiary, mask, pssm, primary_token
 
     def __len__(self):
         return self.num_proteins
