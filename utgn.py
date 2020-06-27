@@ -86,7 +86,8 @@ class UTGN(openprotein.BaseModel):
             self.src_mask = mask
 
         # transfomer
-        state = F.relu(self.W(packed_input_sequences[0]))
+        state = self.W(packed_input_sequences[0].to(self.device))
+        state = F.relu(state)
         state, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
             torch.nn.utils.rnn.PackedSequence(state, packed_input_sequences[1]))
         positional_encodings = self.pos_encoder(state)
@@ -134,6 +135,7 @@ class Dihedral(nn.Module):
         flatten = torch.reshape(linear, [-1, 60])
         probs = self.prob(flatten / 1.0)
         dihedral_flatten = reduce_mean_angle(probs, alphabet)
-        dihedral_flatten = dihedral_flatten.contiguous().view(internal_representation.size(0), self.batch_size,
+        print(linear.shape, dihedral_flatten.shape)
+        dihedral_flatten = dihedral_flatten.contiguous().view(internal_representation.size(0), linear.size(1),
                                                               NUM_DIHEDRALS)
         return dihedral_flatten
