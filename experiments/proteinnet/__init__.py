@@ -27,7 +27,7 @@ def run_experiment(parser, use_gpu):
         training_file = "data/preprocessed/training_" + path + ".hdf5"
         validation_file = "data/preprocessed/validation.hdf5"
 
-        model = UTGN(use_gpu=use_gpu)  # embed size = 21
+        model = UTGN(use_gpu=use_gpu, batch_size=args.minibatch_size)  # embed size = 21
 
         train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
         validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)

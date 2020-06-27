@@ -1,0 +1,16 @@
+panjang protein: 27
+ukuran batch: 4
+ukuran hidden_size: 25
+ukuran output unit pada fc = 5000
+ukuran packed_input_sequence[0] = (98, 21) # 98 = 27 * 4
+hasil dari lstm = (98, 50) # 50 = hidden_size * 2
+emission_padded = (27, 4, 500) # 500 fc
+emission = (4, 500, 27) # hasil dari transpose
+emission = (4, 27, 500) # setelah dinormalisasi, ditranspose lagi
+output_angles = (27, 4, 3)
+
+------------------------------------
+
+get_backbone_positions_from_angular_prediction
+
+poinst (81, 4, 3)

@@ -80,8 +80,8 @@ class BaseModel(nn.Module):
 
         return angular_loss  # + drmsd_avg
 
-    def forward(self, original_aa_string):
-        return self._get_network_emissions(original_aa_string)
+    def forward(self, original_aa_string, pssm=-1):
+        return self._get_network_emissions(original_aa_string, pssm)
 
     def evaluate_model(self, data_loader):
         loss = 0
@@ -89,9 +89,9 @@ class BaseModel(nn.Module):
         dRMSD_list = []
         RMSD_list = []
         for _, data in enumerate(data_loader, 0):
-            primary_sequence, tertiary_positions, _mask = data
+            primary_sequence, tertiary_positions, _mask, pssm = data
             start = time.time()
-            predicted_angles, backbone_atoms, _batch_sizes = self(primary_sequence)
+            predicted_angles, backbone_atoms, _batch_sizes = self(primary_sequence, pssm)
             write_out("Apply model to validation minibatch:", time.time() - start)
             cpu_predicted_angles = predicted_angles.transpose(0, 1).cpu().detach()
             cpu_predicted_backbone_atoms = backbone_atoms.transpose(0, 1).cpu().detach()

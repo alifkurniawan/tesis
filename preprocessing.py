@@ -16,7 +16,7 @@ from util import calculate_dihedral_angles_over_minibatch, \
 from tape.tokenizers import TAPETokenizer
 
 
-def process_raw_data(use_gpu=False, path='data/preprocessed', max_sequence_length=150,
+def process_raw_data(use_gpu=False, path='data/preprocessed', max_sequence_length=30,
                      force_pre_processing_overwrite=True,
                      use_mask=True):
     print("Starting pre-processing of raw data...")
@@ -120,9 +120,9 @@ def process_file(input_file, output_file, use_gpu, max_sequence_length, use_mask
         sequence_length = len(next_protein['primary'])
 
         if sequence_length > max_sequence_length:
-            print("Dropping protein as length too long:", sequence_length)
+            # print("Dropping protein as length too long:", sequence_length)
             continue
-
+        print("Process protein with length", sequence_length)
         if current_buffer_allocation >= current_buffer_size:
             current_buffer_size = current_buffer_size + 1
             dset1.resize((current_buffer_size, max_sequence_length))

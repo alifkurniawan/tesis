@@ -32,7 +32,7 @@ def main():
     parser.add_argument('--min-updates', dest='minimum_updates', type=int,
                         default=100, help='Minimum number of minibatch iterations.')
     parser.add_argument('--minibatch-size', dest='minibatch_size', type=int,
-                        default=8, help='Size of each minibatch.')
+                        default=4, help='Size of each minibatch.')
     parser.add_argument('--experiment-id', dest='experiment_id', type=str,
                         default="example", help='Which experiment to run.')
     parser.add_argument('--hidden-size', dest='hidden_size', type=int,
