@@ -22,11 +22,10 @@ class BaseModel(nn.Module):
         self.use_gpu = use_gpu
         self.historical_rmsd_avg_values = list()
         self.historical_drmsd_avg_values = list()
-        self.emb = ProteinBertModel.from_pretrained(pretraining)
+
         if pretraining == 'bert-base':
+            self.emb = ProteinBertModel.from_pretrained(pretraining)
             self.embedding_size = 768
-        else:
-            self.embedding_size = 42
 
 
 
@@ -53,7 +52,7 @@ class BaseModel(nn.Module):
             embeddings = embeddings.transpose(0, 1)
 
             packed_input_sequences = rnn_utils.pack_padded_sequence(embeddings, token_batch_sizes)
-        #else:
+        else:
             data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
                 torch.nn.utils.rnn.pack_sequence(original_aa_string))
 
@@ -76,7 +75,7 @@ class BaseModel(nn.Module):
                 input_sequences[:, :, pssm_data.size(2):] = pssm_data
             else:
                 input_sequences = one_hot_encoding
-            packed_input_sequences2 = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
+            packed_input_sequences = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
 
         end = time.time()
         write_out("Embed time:", end - start_compute_embed)

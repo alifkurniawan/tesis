@@ -41,7 +41,7 @@ def reduce_mean_angle(weights, angles):
 
 
 class UTGN(openprotein.BaseModel):
-    def __init__(self, dropout=0.5, alphabet_size=60, input_dim=42, num_vocab=256, n_hid=512, embedding_size=42,
+    def __init__(self, dropout=0.5, alphabet_size=60, input_dim=20, num_vocab=256, n_hid=512, embedding_size=21,
                  n_head=8, n_layers=6,
                  use_gpu=False, batch_size=32, pretraining='bert-base'):
         super().__init__(use_gpu, embedding_size, pretraining)
@@ -54,8 +54,8 @@ class UTGN(openprotein.BaseModel):
         self.batch_size = batch_size
 
         self.src_mask = None
-
-        self.emb = ProteinBertModel.from_pretrained(pretraining)
+        if pretraining is not -1:
+            self.emb = ProteinBertModel.from_pretrained(pretraining)
 
         self.W = nn.Linear(self.embedding_dim, self.num_vocab)
 
@@ -79,7 +79,8 @@ class UTGN(openprotein.BaseModel):
     def _get_network_emissions(self, original_aa_string, pssm=-1, primary_token=-1):
 
         # set input
-        packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
+        # packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
+        packed_input_sequences = self.embed(original_aa_string, -1, -1 )
         minibatch_size = int(packed_input_sequences[1][0])
 
         if self.src_mask is None or self.src_mask.size(0) != packed_input_sequences[1].size(0):
