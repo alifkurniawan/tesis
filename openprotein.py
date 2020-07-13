@@ -35,7 +35,7 @@ class BaseModel(nn.Module):
     def embed(self, original_aa_string, pssm=-1, primary_token=-1):
         start_compute_embed = time.time()
 
-        if primary_token != -1:
+        if primary_token != -1 and original_aa_string is -1:
             tokens, token_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
                 torch.nn.utils.rnn.pack_sequence(primary_token))
 
@@ -52,6 +52,41 @@ class BaseModel(nn.Module):
             embeddings = embeddings.transpose(0, 1)
 
             packed_input_sequences = rnn_utils.pack_padded_sequence(embeddings, token_batch_sizes)
+        elif original_aa_string is not -1 and primary_token is not -1:
+
+            tokens, token_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                torch.nn.utils.rnn.pack_sequence(primary_token))
+
+            embeddings = torch.zeros(len(token_batch_sizes), token_batch_sizes[0], self.embedding_size - 21)
+            tokens = tokens.transpose(0, 1)
+
+            for idx in range(len(tokens)):
+                i = torch.tensor([tokens[idx].numpy()], dtype=torch.long)
+                if self.use_gpu:
+                    i = i.cuda()
+
+                embeddings[idx] = self.emb(i)[0][0]
+
+            embeddings = embeddings.transpose(0, 1)
+
+            data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                torch.nn.utils.rnn.pack_sequence(original_aa_string))
+
+            # one-hot encoding
+            prot_aa_list = data.unsqueeze(1)
+            embed_tensor = torch.zeros(prot_aa_list.size(0), 21, prot_aa_list.size(2))  # 21 classes
+            if self.use_gpu:
+                prot_aa_list = prot_aa_list.cuda()
+                embed_tensor = embed_tensor.cuda()
+            one_hot_encoding = embed_tensor.scatter_(1, prot_aa_list.data, 1).transpose(1, 2)
+
+            input_sequences = torch.zeros(one_hot_encoding.size(0), one_hot_encoding.size(1),
+                                          one_hot_encoding.size(2) + embeddings.size(2))
+            input_sequences[:, :, :one_hot_encoding.size(2)] = one_hot_encoding
+            input_sequences[:, :, one_hot_encoding.size(2):] = embeddings
+
+            packed_input_sequences = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
+
         else:
             data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
                 torch.nn.utils.rnn.pack_sequence(original_aa_string))
