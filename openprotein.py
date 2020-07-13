@@ -22,7 +22,7 @@ class BaseModel(nn.Module):
         self.use_gpu = use_gpu
         self.historical_rmsd_avg_values = list()
         self.historical_drmsd_avg_values = list()
-        self.emb = ProteinBertModel.from_pretrained(pretraining).to('cpu')
+        self.emb = ProteinBertModel.from_pretrained(pretraining)
         if pretraining == 'bert-base':
             self.embedding_size = 768
         else:
