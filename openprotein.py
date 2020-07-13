@@ -11,53 +11,72 @@ import torch.nn as nn
 from util import calculate_dihedral_angles_over_minibatch, calc_angular_difference, \
     write_out, calc_rmsd, calc_drmsd, calculate_dihedral_angles, \
     get_structure_from_angles, write_to_pdb
+from tape import ProteinBertModel
 
 
 class BaseModel(nn.Module):
-    def __init__(self, use_gpu, embedding_size):
+    def __init__(self, use_gpu, embedding_size, pretraining='bert-base'):
         super(BaseModel, self).__init__()
 
         # initialize model variables
         self.use_gpu = use_gpu
-        self.embedding_size = embedding_size
         self.historical_rmsd_avg_values = list()
         self.historical_drmsd_avg_values = list()
+        self.emb = ProteinBertModel.from_pretrained(pretraining)
+        if pretraining == 'bert-base':
+            self.embedding_size = 768
+        else:
+            self.embedding_size = 42
+
+
 
     def get_embedding_size(self):
         return self.embedding_size
 
     def embed(self, original_aa_string, pssm=-1, primary_token=-1):
-        data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
-            torch.nn.utils.rnn.pack_sequence(original_aa_string))
-
-        token, token_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
-            torch.nn.utils.rnn.pack_sequence(primary_token))
-
-        # one-hot encoding
         start_compute_embed = time.time()
-        prot_aa_list = data.unsqueeze(1)
-        embed_tensor = torch.zeros(prot_aa_list.size(0), 21, prot_aa_list.size(2))  # 21 classes
-        if self.use_gpu:
-            prot_aa_list = prot_aa_list.cuda()
-            embed_tensor = embed_tensor.cuda()
-        one_hot_encoding = embed_tensor.scatter_(1, prot_aa_list.data, 1).transpose(1, 2)
 
-        # add pssm as input
-        if pssm is not -1:
-            pssm_data, pssm_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
-                torch.nn.utils.rnn.pack_sequence(pssm))
+        if primary_token != -1:
+            tokens, token_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                torch.nn.utils.rnn.pack_sequence(primary_token))
 
-            input_sequences = torch.zeros(one_hot_encoding.size(0), one_hot_encoding.size(1),
-                                          one_hot_encoding.size(2) + pssm_data.size(2))
-            input_sequences[:, :, :one_hot_encoding.size(2)] = one_hot_encoding
-            input_sequences[:, :, pssm_data.size(2):] = pssm_data
-        else:
-            input_sequences = one_hot_encoding
+            embeddings = torch.zeros(len(token_batch_sizes), token_batch_sizes[0], self.embedding_size)
+            tokens = tokens.transpose(0, 1)
+
+            for idx in range(len(tokens)):
+                i = torch.tensor([tokens[idx].numpy()], dtype=torch.long)
+                embeddings[idx] = self.emb(i)[0][0]
+
+            embeddings = embeddings.transpose(0, 1)
+
+            packed_input_sequences = rnn_utils.pack_padded_sequence(embeddings, token_batch_sizes)
+        #else:
+            data, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                torch.nn.utils.rnn.pack_sequence(original_aa_string))
+
+            # one-hot encoding
+            prot_aa_list = data.unsqueeze(1)
+            embed_tensor = torch.zeros(prot_aa_list.size(0), 21, prot_aa_list.size(2))  # 21 classes
+            if self.use_gpu:
+                prot_aa_list = prot_aa_list.cuda()
+                embed_tensor = embed_tensor.cuda()
+            one_hot_encoding = embed_tensor.scatter_(1, prot_aa_list.data, 1).transpose(1, 2)
+
+            # add pssm as input
+            if pssm is not -1:
+                pssm_data, pssm_batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
+                    torch.nn.utils.rnn.pack_sequence(pssm))
+
+                input_sequences = torch.zeros(one_hot_encoding.size(0), one_hot_encoding.size(1),
+                                              one_hot_encoding.size(2) + pssm_data.size(2))
+                input_sequences[:, :, :one_hot_encoding.size(2)] = one_hot_encoding
+                input_sequences[:, :, pssm_data.size(2):] = pssm_data
+            else:
+                input_sequences = one_hot_encoding
+            packed_input_sequences2 = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
 
         end = time.time()
         write_out("Embed time:", end - start_compute_embed)
-        packed_input_sequences = rnn_utils.pack_padded_sequence(input_sequences, batch_sizes)
-
         return packed_input_sequences
 
     def compute_loss(self, minibatch):

@@ -43,8 +43,8 @@ def reduce_mean_angle(weights, angles):
 class UTGN(openprotein.BaseModel):
     def __init__(self, dropout=0.5, alphabet_size=60, input_dim=42, num_vocab=256, n_hid=512, embedding_size=42,
                  n_head=8, n_layers=6,
-                 use_gpu=False, batch_size=32):
-        super().__init__(use_gpu, embedding_size)
+                 use_gpu=False, batch_size=32, pretraining='bert-base'):
+        super().__init__(use_gpu, embedding_size, pretraining)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.input_dim = input_dim
         self.embedding_size = embedding_size
@@ -55,7 +55,7 @@ class UTGN(openprotein.BaseModel):
 
         self.src_mask = None
 
-        # self.emb = ProteinBertModel.from_pretrained('bert-base')
+        self.emb = ProteinBertModel.from_pretrained(pretraining)
 
         self.W = nn.Linear(self.embedding_dim, self.num_vocab)
 
@@ -77,6 +77,7 @@ class UTGN(openprotein.BaseModel):
         return mask
 
     def _get_network_emissions(self, original_aa_string, pssm=-1, primary_token=-1):
+
         # set input
         packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
         minibatch_size = int(packed_input_sequences[1][0])
