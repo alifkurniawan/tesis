@@ -45,6 +45,9 @@ class BaseModel(nn.Module):
 
             for idx in range(len(tokens)):
                 i = torch.tensor([tokens[idx].numpy()], dtype=torch.long)
+                if self.use_gpu:
+                    i = i.cuda()
+
                 embeddings[idx] = self.emb(i)[0][0]
 
             embeddings = embeddings.transpose(0, 1)
