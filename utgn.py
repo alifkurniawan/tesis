@@ -43,7 +43,7 @@ def reduce_mean_angle(weights, angles):
 class UTGN(openprotein.BaseModel):
     def __init__(self, dropout=0.5, alphabet_size=60, input_dim=20, num_vocab=256, n_hid=512, embedding_size=21,
                  n_head=8, n_layers=6,
-                 use_gpu=False, batch_size=32, pretraining='bert-base'):
+                 use_gpu=False, batch_size=32, pretraining='bert-base', use_aa=True, use_pssm=True, use_token=False):
         super().__init__(use_gpu, embedding_size, pretraining)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.input_dim = input_dim
@@ -70,17 +70,22 @@ class UTGN(openprotein.BaseModel):
         self.alphabet = nn.Parameter(u.rsample(torch.Size([alphabet_size, 3])))
 
         self._dehidrals = Dihedral(num_vocab, alphabet_size, self.batch_size)
+        self.use_aa = use_aa
+        self.use_pssm = use_pssm
+        self.use_token = use_token
 
     def _generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def _get_network_emissions(self, original_aa_string, pssm=-1, primary_token=-1):
+    def _get_network_emissions(self, original_aa_string, pssm, primary_token):
 
         # set input
-        # packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
-        packed_input_sequences = self.embed(original_aa_string, pssm, -1)
+        aa = original_aa_string if self.use_aa else -1
+        evo = pssm if self.use_pssm else -1
+        tok = primary_token if self.use_token else -1
+        packed_input_sequences = self.embed(aa, evo, tok)
         minibatch_size = int(packed_input_sequences[1][0])
 
         if self.src_mask is None or self.src_mask.size(0) != packed_input_sequences[1].size(0):

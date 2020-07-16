@@ -24,7 +24,8 @@ torch.manual_seed(1)
 # sample model borrowed from
 # https://github.com/lblaabjerg/Master/blob/master/Models%20and%20processed%20data/ProteinNet_LSTM_500.py
 class RGN(openprotein.BaseModel):
-    def __init__(self, embedding_size, minibatch_size, use_gpu, num_vocab=256, alphabet_size=60, pretraining='bert-base'):
+    def __init__(self, embedding_size, minibatch_size, use_gpu, num_vocab=256, alphabet_size=60,
+                 pretraining='bert-base', use_aa=True, use_pssm=True, use_token=False):
         super(RGN, self).__init__(use_gpu, embedding_size, pretraining)
 
         self.hidden_size = 800
@@ -42,6 +43,10 @@ class RGN(openprotein.BaseModel):
         self._dehidrals = Dihedral(num_vocab, alphabet_size, minibatch_size)
         self.soft = nn.LogSoftmax(2)
         self.batch_norm = nn.BatchNorm1d(self.mixture_size)
+        self.use_aa = use_aa
+        self.use_pssm = use_pssm
+        self.use_token = use_token
+
 
     def init_hidden(self, minibatch_size):
         # number of layers (* 2 since bidirectional), minibatch_size, hidden size
@@ -56,7 +61,10 @@ class RGN(openprotein.BaseModel):
                              autograd.Variable(initial_cell_state))
 
     def _get_network_emissions(self, original_aa_string, pssm, token):
-        packed_input_sequences = self.embed(original_aa_string, pssm)
+        aa = original_aa_string if self.use_aa else -1
+        evo = pssm if self.use_pssm else -1
+        tok = token if self.use_token else -1
+        packed_input_sequences = self.embed(aa, evo, tok)
         minibatch_size = int(packed_input_sequences[1][0])
         self.init_hidden(minibatch_size)
 

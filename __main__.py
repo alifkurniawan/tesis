@@ -41,6 +41,9 @@ def main():
                         default='adam', help='Optimizer')
     parser.add_argument('--restart', dest='restart', action='store_true',
                         default=False, help='Restart')
+    parser.add_argument('--skenario', dest='skenario', type=int,
+                        default=1, help='Skenario')
+
     args, _ = parser.parse_known_args()
 
     if args.hide_ui:

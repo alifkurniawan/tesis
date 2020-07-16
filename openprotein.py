@@ -32,7 +32,7 @@ class BaseModel(nn.Module):
     def get_embedding_size(self):
         return self.embedding_size
 
-    def embed(self, original_aa_string, pssm=-1, primary_token=-1):
+    def embed(self, original_aa_string, pssm, primary_token):
         start_compute_embed = time.time()
 
         if primary_token != -1 and original_aa_string is -1:
