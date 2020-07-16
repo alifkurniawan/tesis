@@ -5,12 +5,13 @@ For license information, please see the LICENSE file in the root directory.
 """
 
 from preprocessing import process_raw_data
+from rgn import RGN
 
 from utgn import *
 from training import train_model
 from util import contruct_dataloader_from_disk
 
-data_paths = ['30']
+data_paths = ['90']
 
 
 def run_experiment(parser, use_gpu):
@@ -28,7 +29,9 @@ def run_experiment(parser, use_gpu):
         validation_file = "data/preprocessed/validation.hdf5"
 
         # model = UTGN(embedding_size=768, use_gpu=use_gpu, batch_size=args.minibatch_size, )  # embed size = 21
-        model = UTGN(embedding_size=768 + 21, use_gpu=use_gpu, batch_size=args.minibatch_size)  # embed size = 21
+        # model = UTGN(embedding_size=768 + 21, use_gpu=use_gpu, batch_size=args.minibatch_size)  # embed size = 21
+        # model = UTGN(embedding_size=42, use_gpu=use_gpu, batch_size=args.minibatch_size, pretraining=-1)  # embed size = 21
+        model = RGN(embedding_size=42, use_gpu=use_gpu, minibatch_size=args.minibatch_size, pretraining=-1)  # embed size = 21
 
         train_loader = contruct_dataloader_from_disk(training_file, args.minibatch_size)
         validation_loader = contruct_dataloader_from_disk(validation_file, args.minibatch_size)

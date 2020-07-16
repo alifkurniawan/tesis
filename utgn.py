@@ -80,7 +80,7 @@ class UTGN(openprotein.BaseModel):
 
         # set input
         # packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
-        packed_input_sequences = self.embed(original_aa_string, pssm, primary_token)
+        packed_input_sequences = self.embed(original_aa_string, pssm, -1)
         minibatch_size = int(packed_input_sequences[1][0])
 
         if self.src_mask is None or self.src_mask.size(0) != packed_input_sequences[1].size(0):
