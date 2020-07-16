@@ -60,6 +60,9 @@ class RGN(openprotein.BaseModel):
         minibatch_size = int(packed_input_sequences[1][0])
         self.init_hidden(minibatch_size)
 
+        if self.use_gpu:
+            packed_input_sequences.cuda()
+
         (data, bi_lstm_batches, _, _), self.hidden_layer = self.bi_lstm(packed_input_sequences, self.hidden_layer)
         emissions_padded, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(torch.nn.utils.rnn.PackedSequence(self.hidden_to_labels(data), bi_lstm_batches))
         emissions = emissions_padded.transpose(0, 1).transpose(1, 2)  # minibatch_size, self.mixture_size, -1
