@@ -143,6 +143,7 @@ class UniversalTransformer(nn.Module):
         self.fc = nn.Linear(self.num_vocab, 1, bias=True)
         self.sigmoid = nn.Sigmoid()
         self.use_gpu = torch.cuda.is_available()
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def forward(self, state, input_mask):
 
@@ -159,9 +160,8 @@ class UniversalTransformer(nn.Module):
         if self.use_gpu:
             halting_probability = halting_probability.cuda()
             remainders = remainders.cuda()
-            n_updates = n_updates.cuda()
             previous_state = previous_state.cuda()
-            new_state = new_state.cuda()
+            n_updates = n_updates.cuda()
 
         while self._should_continue(halting_probability, n_updates):
             (transformed_state, step, halting_probability, remainders,
@@ -172,10 +172,11 @@ class UniversalTransformer(nn.Module):
         return new_state
 
     def _should_continue(self, halting_probability, n_updates):
+        
         return torch.max(
             np.logical_and(
-                torch.le(halting_probability, self.act_threshold),
-                torch.le(n_updates, self.act_max_steps)
+                torch.le(halting_probability.cpu(), self.act_threshold),
+                torch.le(n_updates.cpu(), self.act_max_steps)
             )
         )
 
@@ -186,10 +187,14 @@ class UniversalTransformer(nn.Module):
         p = p.transpose(0, 1)
         # Mask for inputs which have not halted yet
         still_running = torch.tensor(torch.le(halting_probability, 1.0), dtype=torch.float32)
+        if self.use_gpu:
+            still_running = still_running.cuda()
 
         # Mask of inputs which halted at this step
-        new_halted = torch.tensor(torch.gt(halting_probability + p * still_running, self.act_threshold),
-                                  dtype=torch.float32) * still_running
+        new_halted = torch.gt(halting_probability + p * still_running, self.act_threshold)  * still_running
+
+        if  self.use_gpu():
+            new_halted = new_halted.cuda()
 
         # Mask of inputs which haven't halted, and didn't halt this step
         still_running = torch.le(halting_probability + p * still_running, self.act_threshold) * still_running
