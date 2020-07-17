@@ -142,8 +142,10 @@ class UniversalTransformer(nn.Module):
         self.num_vocab = num_vocab
         self.fc = nn.Linear(self.num_vocab, 1, bias=True)
         self.sigmoid = nn.Sigmoid()
+        self.use_gpu = torch.cuda.is_available()
 
     def forward(self, state, input_mask):
+
         seq_length = state.size(0)
         batch_size = state.size(1)
         input_dim = state.size(2)
@@ -151,12 +153,21 @@ class UniversalTransformer(nn.Module):
         halting_probability = torch.zeros(batch_size, seq_length, 1)
         remainders = torch.zeros(batch_size, seq_length, 1)
         n_updates = torch.zeros(batch_size, seq_length, 1)
+        new_state = torch.zeros(batch_size, seq_length, 1)
         previous_state = torch.zeros(batch_size, seq_length, input_dim)
+
+        if self.use_gpu:
+            halting_probability = halting_probability.cuda()
+            remainders = remainders.cuda()
+            n_updates = n_updates.cuda()
+            previous_state = previous_state.cuda()
+            new_state = new_state.cuda()
 
         while self._should_continue(halting_probability, n_updates):
             (transformed_state, step, halting_probability, remainders,
-             n_updates, new_state) = self._ut_function(state, step, halting_probability, remainders, n_updates, previous_state,
-                              self.encoder_layers, input_mask)
+             n_updates, new_state) = self._ut_function(state, step, halting_probability, remainders, n_updates,
+                                                       previous_state,
+                                                       self.encoder_layers, input_mask)
 
         return new_state
 
@@ -168,7 +179,8 @@ class UniversalTransformer(nn.Module):
             )
         )
 
-    def _ut_function(self, state, step, halting_probability, remainders, n_updates, previous_state, encoder_layers, input_mask):
+    def _ut_function(self, state, step, halting_probability, remainders, n_updates, previous_state, encoder_layers,
+                     input_mask):
         p = self.fc(state)
         p = self.sigmoid(p)
         p = p.transpose(0, 1)
@@ -212,8 +224,6 @@ class UniversalTransformer(nn.Module):
 
         return (transformed_state, step, halting_probability, remainders,
                 n_updates, new_state)
-
-
 
 
 class Dihedral(nn.Module):
