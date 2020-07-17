@@ -63,7 +63,8 @@ class UTGN(openprotein.BaseModel):
 
         encoder_layers = TransformerEncoderLayer(num_vocab, n_head, n_hid, dropout)
 
-        self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
+        # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
+        self.transformer_encoder = UniversalTransformer(encoder_layers, n_layers, num_vocab)
 
         # initialize alphabet to random values between -pi and pi
         u = torch.distributions.Uniform(-3.14, 3.14)
@@ -98,6 +99,7 @@ class UTGN(openprotein.BaseModel):
         state, batch_sizes = torch.nn.utils.rnn.pad_packed_sequence(
             torch.nn.utils.rnn.PackedSequence(state, packed_input_sequences[1]))
         positional_encodings = self.pos_encoder(state)
+
         output = self.transformer_encoder(positional_encodings, self.src_mask)
 
         # convert internal representation to label
@@ -105,7 +107,7 @@ class UTGN(openprotein.BaseModel):
 
         # coordinate
         backbone_atoms_padded, _ = get_backbone_positions_from_angular_prediction(output_angles, batch_sizes,
-                                                                               self.use_gpu)
+                                                                                  self.use_gpu)
 
         return output_angles, backbone_atoms_padded, batch_sizes
 
@@ -127,6 +129,91 @@ class PositionalEncoding(nn.Module):
     def forward(self, x):
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
+
+
+class UniversalTransformer(nn.Module):
+    def __init__(self, encoder_layers, n_layers, act_max_steps=10, keep_prob=1.0, act_threshold=0.5, num_vocab=256):
+        super(UniversalTransformer, self).__init__()
+        self.encoder_layers = encoder_layers
+        self.n_layers = n_layers
+        self.act_max_steps = act_max_steps
+        self.keep_prob = keep_prob
+        self.act_threshold = act_threshold
+        self.num_vocab = num_vocab
+        self.fc = nn.Linear(self.num_vocab, 1, bias=True)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, state, input_mask):
+        seq_length = state.size(0)
+        batch_size = state.size(1)
+        input_dim = state.size(2)
+        step = 0
+        halting_probability = torch.zeros(batch_size, seq_length, 1)
+        remainders = torch.zeros(batch_size, seq_length, 1)
+        n_updates = torch.zeros(batch_size, seq_length, 1)
+        previous_state = torch.zeros(batch_size, seq_length, input_dim)
+
+        while self._should_continue(halting_probability, n_updates):
+            (transformed_state, step, halting_probability, remainders,
+             n_updates, new_state) = self._ut_function(state, step, halting_probability, remainders, n_updates, previous_state,
+                              self.encoder_layers, input_mask)
+
+        return new_state
+
+    def _should_continue(self, halting_probability, n_updates):
+        return torch.max(
+            np.logical_and(
+                torch.le(halting_probability, self.act_threshold),
+                torch.le(n_updates, self.act_max_steps)
+            )
+        )
+
+    def _ut_function(self, state, step, halting_probability, remainders, n_updates, previous_state, encoder_layers, input_mask):
+        p = self.fc(state)
+        p = self.sigmoid(p)
+        p = p.transpose(0, 1)
+        # Mask for inputs which have not halted yet
+        still_running = torch.tensor(torch.le(halting_probability, 1.0), dtype=torch.float32)
+
+        # Mask of inputs which halted at this step
+        new_halted = torch.tensor(torch.gt(halting_probability + p * still_running, self.act_threshold),
+                                  dtype=torch.float32) * still_running
+
+        # Mask of inputs which haven't halted, and didn't halt this step
+        still_running = torch.le(halting_probability + p * still_running, self.act_threshold) * still_running
+
+        # Add the halting probability for this step to the halting
+        # probabilities for those input which haven't halted yet
+        halting_probability += p * still_running
+
+        # Compute remainders for the inputs which halted at this step
+        remainders += new_halted * (1 - halting_probability)
+
+        # Add the remainders to those inputs which halted at this step
+        halting_probability += new_halted * remainders
+
+        # Increment n_updates for all inputs which are still running
+        n_updates += still_running + new_halted
+
+        # Compute the weight to be applied to the new state and output
+        # 0 when the input has already halted
+        # p when the input hasn't halted yet
+        # the remainders when it halted this step
+        update_weights = p * still_running + new_halted * remainders
+
+        transformed_state = self.encoder_layers(state, input_mask)
+
+        transformed_state = transformed_state.transpose(0, 1)
+        new_state = ((transformed_state * update_weights) + (previous_state *
+                                                             (1 - update_weights)))
+
+        new_state = new_state.transpose(0, 1)
+        step += 1
+
+        return (transformed_state, step, halting_probability, remainders,
+                n_updates, new_state)
+
+
 
 
 class Dihedral(nn.Module):

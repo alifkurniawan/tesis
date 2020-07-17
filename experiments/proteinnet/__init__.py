@@ -11,7 +11,7 @@ from utgn import *
 from training import train_model
 from util import contruct_dataloader_from_disk
 
-data_paths = ['90']
+data_paths = ['30']
 
 
 def run_experiment(parser, use_gpu):

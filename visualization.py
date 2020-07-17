@@ -62,3 +62,11 @@ def showGraph(optimizer, y):
     g = sns.FacetGrid(df[df.optimizer.eq('adam')], col_wrap=2, col='hidden_size')
     g.map(plt.plot, 'sample_num', y)
     plt.show()
+
+def showGraph(data):
+    x = data['sample_num']
+    y1 = data['rmsd_avg']
+    y2 = data['validation_loss_values']
+    plt.plot(x, y1, label='RMSD Avg')
+    plt.plot(x, y2, label='Validation Loss')
+    plt.show()
