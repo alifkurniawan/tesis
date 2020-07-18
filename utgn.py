@@ -191,9 +191,9 @@ class UniversalTransformer(nn.Module):
             still_running = still_running.cuda()
 
         # Mask of inputs which halted at this step
-        new_halted = torch.gt(halting_probability + p * still_running, self.act_threshold)  * still_running
+        new_halted = torch.gt(halting_probability + p * still_running, self.act_threshold) * still_running
 
-        if  self.use_gpu():
+        if self.use_gpu:
             new_halted = new_halted.cuda()
 
         # Mask of inputs which haven't halted, and didn't halt this step
