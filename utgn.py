@@ -186,7 +186,7 @@ class UniversalTransformer(nn.Module):
         p = self.sigmoid(p)
         p = p.transpose(0, 1)
         # Mask for inputs which have not halted yet
-        still_running = torch.tensor(torch.le(halting_probability, 1.0), dtype=torch.float32)
+        still_running = torch.lt(halting_probability, 1.0)
         if self.use_gpu:
             still_running = still_running.cuda()
 
@@ -197,7 +197,7 @@ class UniversalTransformer(nn.Module):
             new_halted = new_halted.cuda()
 
         # Mask of inputs which haven't halted, and didn't halt this step
-        still_running = torch.le(halting_probability + p * still_running, self.act_threshold) * still_running
+        still_running = torch.lt(halting_probability + p * still_running, self.act_threshold) * still_running
 
         # Add the halting probability for this step to the halting
         # probabilities for those input which haven't halted yet
