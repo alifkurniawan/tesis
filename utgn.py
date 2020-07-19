@@ -64,7 +64,7 @@ class UTGN(openprotein.BaseModel):
         encoder_layers = TransformerEncoderLayer(num_vocab, n_head, n_hid, dropout)
 
         # self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
-        self.transformer_encoder = UniversalTransformer(encoder_layers, n_layers, num_vocab)
+        self.transformer_encoder = UniversalTransformer(encoder_layers, n_layers)
 
         # initialize alphabet to random values between -pi and pi
         u = torch.distributions.Uniform(-3.14, 3.14)
@@ -172,7 +172,7 @@ class UniversalTransformer(nn.Module):
         return new_state
 
     def _should_continue(self, halting_probability, n_updates):
-        
+
         return torch.max(
             np.logical_and(
                 torch.le(halting_probability.cpu(), self.act_threshold),
@@ -219,6 +219,8 @@ class UniversalTransformer(nn.Module):
         update_weights = p * still_running + new_halted * remainders
 
         transformed_state = self.encoder_layers(state, input_mask)
+        for i in range(self.n_layers):
+            transformed_state = self.encoder_layers(state, input_mask)
 
         transformed_state = transformed_state.transpose(0, 1)
         new_state = ((transformed_state * update_weights) + (previous_state *
