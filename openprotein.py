@@ -167,7 +167,7 @@ class BaseModel(nn.Module):
                 drmsd = calc_drmsd(predicted_coords, actual_coords)
                 RMSD_list.append(rmsd)
                 dRMSD_list.append(drmsd)
-                error = rmsd
+                error = drmsd
                 loss += error
                 end = time.time()
             write_out("Calculate validation loss for minibatch took:", end - start)

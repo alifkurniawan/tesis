@@ -59,7 +59,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
             loss, drmsd_avg = model.compute_loss(training_minibatch)
             write_out("Train loss:", float(loss))
             start_compute_grad = time.time()
-            loss.backward()
+            drmsd_avg.backward()
             loss_tracker = np.append(loss_tracker, float(loss))
             drmsd_tracker = np.append(drmsd_tracker, float(drmsd_avg))
             end = time.time()
