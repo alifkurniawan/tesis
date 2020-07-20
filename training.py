@@ -52,6 +52,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
         optimizer.zero_grad()
         model.zero_grad()
         loss_tracker = np.zeros(0)
+        drmsd_tracker = np.zeros(0)
         for _minibatch_id, training_minibatch in enumerate(train_loader, 0):
             minibatches_proccesed += 1
             start_compute_loss = time.time()
@@ -87,7 +88,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                     best_model_path = write_model_to_disk(model)
                     best_json_data = json_data
 
-                write_out("Validation loss:", validation_loss, "Train loss:", train_loss)
+                write_out("Validation loss:", validation_loss, "Train loss:", train_loss, "Train drmsd:", train_drmsd)
                 write_out("Best model so far (validation loss): ", best_model_loss, "at time",
                           best_model_minibatch_time)
                 write_out("Best model stored at " + best_model_path)
