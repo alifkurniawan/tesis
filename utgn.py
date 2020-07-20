@@ -210,7 +210,7 @@ class UniversalTransformer(nn.Module):
 
         #transformed_state = state
         # for i in range(self.n_layers):
-        transformed_state = self.encoder_layers(state, input_mask)
+        transformed_state = self.encoder_layers(state)
 
         transformed_state = transformed_state.transpose(0, 1)
         new_state = ((transformed_state * update_weights) + (previous_state *
