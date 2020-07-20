@@ -207,9 +207,9 @@ class UniversalTransformer(nn.Module):
         # the remainders when it halted this step
         update_weights = p * still_running + new_halted * remainders
 
-        transformed_state = self.encoder_layers(state, input_mask)
+        transformed_state = state
         for i in range(self.n_layers):
-            transformed_state = self.encoder_layers(state, input_mask)
+            transformed_state = self.encoder_layers(transformed_state, input_mask)
 
         transformed_state = transformed_state.transpose(0, 1)
         new_state = ((transformed_state * update_weights) + (previous_state *
