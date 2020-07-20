@@ -37,6 +37,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
 
     sample_num = list()
     train_loss_values = list()
+    train_drmsd_values = list()
     validation_loss_values = list()
 
     best_model_loss = 1e20
@@ -54,11 +55,12 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
         for _minibatch_id, training_minibatch in enumerate(train_loader, 0):
             minibatches_proccesed += 1
             start_compute_loss = time.time()
-            loss = model.compute_loss(training_minibatch)
+            loss, drmsd_avg = model.compute_loss(training_minibatch)
             write_out("Train loss:", float(loss))
             start_compute_grad = time.time()
             loss.backward()
             loss_tracker = np.append(loss_tracker, float(loss))
+            drmsd_tracker = np.append(drmsd_tracker, float(drmsd_avg))
             end = time.time()
             write_out("Loss time:", start_compute_grad - start_compute_loss, "Grad time:",
                       end - start_compute_grad)
@@ -74,7 +76,9 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                 write_out("Testing model on validation set...")
 
                 train_loss = float(loss_tracker.mean())
+                train_drmsd = float(drmsd_tracker.mean())
                 loss_tracker = np.zeros(0)
+                drmsd_tracker = np.zeros(0)
                 validation_loss, json_data, _ = model.evaluate_model(validation_loader)
 
                 if validation_loss < best_model_loss:
@@ -90,11 +94,13 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                 write_out("Minibatches processed:", minibatches_proccesed)
                 sample_num.append(minibatches_proccesed)
                 train_loss_values.append(train_loss)
+                train_drmsd_values.append(train_drmsd)
                 validation_loss_values.append(validation_loss)
 
                 json_data["validation_dataset_size"] = validation_dataset_size
                 json_data["sample_num"] = sample_num
                 json_data["train_loss_values"] = train_loss_values
+                json_data["train_drmsd_values"] = train_drmsd_values
                 json_data["validation_loss_values"] = validation_loss_values
 
                 write_out(json_data)

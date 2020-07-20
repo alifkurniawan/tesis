@@ -10,7 +10,7 @@ import torch.nn.utils.rnn as rnn_utils
 import torch.nn as nn
 from util import calculate_dihedral_angles_over_minibatch, calc_angular_difference, \
     write_out, calc_rmsd, calc_drmsd, calculate_dihedral_angles, \
-    get_structure_from_angles, write_to_pdb
+    get_structure_from_angles, write_to_pdb, calc_avg_drmsd_over_minibatch
 from tape import ProteinBertModel
 
 
@@ -26,8 +26,6 @@ class BaseModel(nn.Module):
         if pretraining == 'bert-base':
             self.emb = ProteinBertModel.from_pretrained(pretraining)
             self.embedding_size = 768
-
-
 
     def get_embedding_size(self):
         return self.embedding_size
@@ -128,16 +126,16 @@ class BaseModel(nn.Module):
         emissions_actual, _ = calculate_dihedral_angles_over_minibatch(actual_coords_list_padded,
                                                                        batch_sizes_coords,
                                                                        self.use_gpu)
-        # drmsd_avg = calc_avg_drmsd_over_minibatch(backbone_atoms_padded,
-        #                                           actual_coords_list_padded,
-        #                                           batch_sizes)
+        drmsd_avg = calc_avg_drmsd_over_minibatch(_backbone_atoms_padded,
+                                                  actual_coords_list_padded,
+                                                  _batch_sizes)
         write_out("Angle calculation time:", time.time() - start)
         if self.use_gpu:
             emissions_actual = emissions_actual.cuda()
-            # drmsd_avg = drmsd_avg.cuda()
+            drmsd_avg = drmsd_avg.cuda()
         angular_loss = calc_angular_difference(emissions, emissions_actual)
 
-        return angular_loss  # + drmsd_avg
+        return angular_loss, drmsd_avg
 
     def forward(self, original_aa_string, pssm=-1, token=-1):
         return self._get_network_emissions(original_aa_string, pssm, token)
