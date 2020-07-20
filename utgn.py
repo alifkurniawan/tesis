@@ -172,13 +172,7 @@ class UniversalTransformer(nn.Module):
         return new_state
 
     def _should_continue(self, halting_probability, n_updates):
-
-        return torch.max(
-            np.logical_and(
-                torch.le(halting_probability.cpu(), self.act_threshold),
-                torch.le(n_updates.cpu(), self.act_max_steps)
-            )
-        )
+        return ((halting_probability < self.act_threshold) & (n_updates < self.act_max_steps)).byte().any()
 
     def _ut_function(self, state, step, halting_probability, remainders, n_updates, previous_state, encoder_layers,
                      input_mask):
@@ -186,18 +180,13 @@ class UniversalTransformer(nn.Module):
         p = self.sigmoid(p)
         p = p.transpose(0, 1)
         # Mask for inputs which have not halted yet
-        still_running = torch.lt(halting_probability, 1.0)
-        if self.use_gpu:
-            still_running = still_running.cuda()
+        still_running = (halting_probability < 1.0).float()
 
         # Mask of inputs which halted at this step
-        new_halted = torch.gt(halting_probability + p * still_running, self.act_threshold) * still_running
-
-        if self.use_gpu:
-            new_halted = new_halted.cuda()
+        new_halted = (halting_probability + p * still_running > self.act_threshold).float() * still_running
 
         # Mask of inputs which haven't halted, and didn't halt this step
-        still_running = torch.lt(halting_probability + p * still_running, self.act_threshold) * still_running
+        still_running = (halting_probability + p * still_running <= self.act_threshold).float() * still_running
 
         # Add the halting probability for this step to the halting
         # probabilities for those input which haven't halted yet
@@ -219,8 +208,8 @@ class UniversalTransformer(nn.Module):
         update_weights = p * still_running + new_halted * remainders
 
         transformed_state = self.encoder_layers(state, input_mask)
-        for i in range(self.n_layers):
-            transformed_state = self.encoder_layers(state, input_mask)
+        # for i in range(self.n_layers):
+        #     transformed_state = self.encoder_layers(state, input_mask)
 
         transformed_state = transformed_state.transpose(0, 1)
         new_state = ((transformed_state * update_weights) + (previous_state *
