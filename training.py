@@ -39,7 +39,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
     train_loss_values = list()
     train_drmsd_values = list()
     validation_loss_values = list()
-
+    validation_angles_loss_values = list()
     best_model_loss = 1e20
     best_model_minibatch_time = None
     best_model_path = None
@@ -80,7 +80,7 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                 train_drmsd = float(drmsd_tracker.mean())
                 loss_tracker = np.zeros(0)
                 drmsd_tracker = np.zeros(0)
-                validation_loss, json_data, _ = model.evaluate_model(validation_loader)
+                validation_loss, json_data, _, validation_angles_loss = model.evaluate_model(validation_loader)
 
                 if validation_loss < best_model_loss:
                     best_model_loss = validation_loss
@@ -97,12 +97,13 @@ def train_model(data_set_identifier, model, train_loader, validation_loader,
                 train_loss_values.append(train_loss)
                 train_drmsd_values.append(train_drmsd)
                 validation_loss_values.append(validation_loss)
-
+                validation_angles_loss_values.append(validation_angles_loss)
                 json_data["validation_dataset_size"] = validation_dataset_size
                 json_data["sample_num"] = sample_num
                 json_data["train_loss_values"] = train_loss_values
                 json_data["train_drmsd_values"] = train_drmsd_values
                 json_data["validation_loss_values"] = validation_loss_values
+                json_data['validation_angles_loss_values'] = validation_angles_loss_values
 
                 write_out(json_data)
 

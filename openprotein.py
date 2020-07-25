@@ -163,6 +163,7 @@ class BaseModel(nn.Module):
                 actual_coords = tertiary_positions.transpose(0, 1).contiguous().view(-1, 3)
                 predicted_coords = predicted_backbone_atoms[:len(primary_sequence)] \
                     .transpose(0, 1).contiguous().view(-1, 3).detach()
+
                 rmsd = calc_rmsd(predicted_coords, actual_coords)
                 drmsd = calc_drmsd(predicted_coords, actual_coords)
                 RMSD_list.append(rmsd)
@@ -183,6 +184,7 @@ class BaseModel(nn.Module):
             pos_pred = pos_pred.cuda()
         angles = calculate_dihedral_angles(pos, self.use_gpu)
         angles_pred = calculate_dihedral_angles(pos_pred, self.use_gpu)
+        diff_angles = calc_angular_difference(angles_pred, angles)
         write_to_pdb(get_structure_from_angles(prim, angles), "test")
         write_to_pdb(get_structure_from_angles(prim, angles_pred), "test_pred")
 
@@ -198,4 +200,4 @@ class BaseModel(nn.Module):
 
         prediction_data = None
 
-        return (loss, data, prediction_data)
+        return loss, data, prediction_data, diff_angles
